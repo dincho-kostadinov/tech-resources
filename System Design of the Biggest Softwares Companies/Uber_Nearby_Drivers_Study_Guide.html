@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uber Nearby Drivers — Complete Study Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #17171f;
+    --border: #2a2a3a;
+    --primary: #00d4aa;
+    --accent: #ffc107;
+    --blue: #34b7f1;
+    --green: #2ed573;
+    --orange: #ffa502;
+    --red: #ff4757;
+    --hex: #00d4aa;
+    --text: #e8e8f0;
+    --muted: #7f7f9a;
+    --code-bg: #0d1117;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #0a0a0f 0%, #0a1f1a 50%, #0a1a2a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 80px 40px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 60% 40%, rgba(0,212,170,0.1) 0%, transparent 60%),
+                radial-gradient(ellipse at 30% 70%, rgba(255,193,7,0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(0,212,170,0.15);
+    border: 1px solid rgba(0,212,170,0.3);
+    color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 14px;
+    border-radius: 100px;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(40px, 7vw, 72px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .hero h1 span { color: var(--primary); }
+  .hero p {
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 580px;
+    margin: 0 auto 40px;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .nav a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 16px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav a:hover { color: var(--text); border-color: var(--primary); }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--primary);
+    background: rgba(0,212,170,0.1);
+    border: 1px solid rgba(0,212,170,0.2);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #3a3a5a; }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title .icon {
+    width: 36px; height: 36px;
+    background: rgba(0,212,170,0.1);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid #1e2a38;
+    border-radius: 10px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 16px 0;
+    color: #c9d1d9;
+  }
+  .code-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .num { color: #79c0ff; }
+  .key { color: #7ee787; }
+  .cmt { color: #8b949e; font-style: italic; }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .step-num {
+    min-width: 32px; height: 32px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .step-content { flex: 1; }
+  .step-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .step-desc { color: var(--muted); font-size: 13px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .td-green { color: var(--primary); font-family: 'JetBrains Mono', monospace; }
+  .td-accent { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .td-blue { color: var(--blue); font-family: 'JetBrains Mono', monospace; }
+  .td-red { color: var(--red); font-family: 'JetBrains Mono', monospace; }
+
+  .callout {
+    background: rgba(0,212,170,0.08);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout strong { color: var(--primary); }
+
+  .callout-warn {
+    background: rgba(255,165,2,0.08);
+    border: 1px solid rgba(255,165,2,0.2);
+    border-left: 3px solid var(--orange);
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout-warn strong { color: var(--orange); }
+
+  .arch {
+    background: var(--code-bg);
+    border: 1px solid #1e2a38;
+    border-radius: 12px;
+    padding: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  /* HEXAGON GRID VISUAL */
+  .hex-grid {
+    background: var(--code-bg);
+    border: 1px solid #1e2a38;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 16px 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--primary);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* COMPARISON CARDS */
+  .vs-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .shape-card {
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .shape-card.winner {
+    border-color: var(--primary);
+    background: rgba(0,212,170,0.05);
+  }
+  .shape-card .symbol {
+    font-size: 48px;
+    margin: 10px 0;
+  }
+  .shape-card.winner .symbol { color: var(--primary); }
+  .shape-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .shape-detail {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* RESOLUTION SCALE */
+  .resolutions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+  }
+  .res-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .res-num {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .res-area {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* Q&A */
+  .qa-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 12px 12px 0;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+  .qa-q {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .qa-a {
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 60px 0; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  html { scroll-behavior: smooth; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 680px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .vs-row { grid-template-columns: 1fr; }
+    .resolutions { grid-template-columns: repeat(2, 1fr); }
+    .hero-stats { gap: 24px; }
+    .container { padding: 40px 20px; }
+    .hero { padding: 60px 20px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Geospatial System Design</div>
+  <h1>How <span>Uber</span><br>Finds Nearby Drivers</h1>
+  <p>The architecture behind handling 1 million requests per second to match riders with the closest available drivers — explained through Uber's H3 hexagonal indexing system.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">1M</div><div class="stat-label">Requests/Second</div></div>
+    <div class="stat"><div class="stat-num">122</div><div class="stat-label">H3 Base Cells</div></div>
+    <div class="stat"><div class="stat-num">16</div><div class="stat-label">Resolution Levels</div></div>
+    <div class="stat"><div class="stat-num">1 m²</div><div class="stat-label">Smallest Cell</div></div>
+  </div>
+</section>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="#problem">The Problem</a>
+  <a href="#indexing">Location Indexing</a>
+  <a href="#h3">H3 Library</a>
+  <a href="#hierarchy">Hierarchical Grid</a>
+  <a href="#hexagons">Why Hexagons?</a>
+  <a href="#algorithms">H3 Algorithms</a>
+  <a href="#storage">Location Storage</a>
+  <a href="#mapmatching">Map Matching</a>
+  <a href="#scalability">Scalability</a>
+  <a href="#cheatsheet">Cheat Sheet</a>
+</nav>
+
+<!-- SECTION 1: THE PROBLEM -->
+<section id="problem">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">The Problem — Why Finding Nearby Drivers is Hard</h2>
+  </div>
+
+  <div class="callout">
+    <strong>The naive approach:</strong> Store driver locations as (latitude, longitude). When rider requests, calculate distance to every driver, return closest. <strong>This fails at scale.</strong> With 1M drivers, you'd compute 1M distance calculations per request × 1M requests/second = unworkable.
+  </div>
+
+  <div class="grid-2" style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">❌</div>What Doesn't Work</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Raw lat/long search</div>
+            <div class="step-desc">O(N) scan over all drivers — impossible at scale</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Even-sized grid squares</div>
+            <div class="step-desc">Empty ocean cells. Hot cells in cities. Uneven distribution.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Single-resolution grid</div>
+            <div class="step-desc">Too small = storage explodes. Too large = poor accuracy.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">✅</div>What Uber Built</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">H3 Hexagonal Index</div>
+            <div class="step-desc">Hierarchical hexagonal grid — Uber's own open-source library</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Cell-based location storage</div>
+            <div class="step-desc">Drivers grouped by which H3 cell they're in. Fast lookups per cell.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Sort by ETA, not distance</div>
+            <div class="step-desc">Closest in time, not just space (traffic-aware)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 2: LOCATION INDEXING -->
+<section id="indexing">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Location Indexing — The Core Idea</h2>
+  </div>
+
+  <div class="callout">
+    <strong>The insight:</strong> Instead of "find drivers near lat/lng X,Y", reframe as "find drivers in cells covering my area". Cell lookup is O(1). Listing drivers in cells is O(small number).
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🎯</div>The Algorithm</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Convert rider's location to H3 cell</div>
+          <div class="step-desc">geoToH3(lat, lng, resolution) → cell_id</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Get neighboring cells</div>
+          <div class="step-desc">kRing(cell_id, k=2) → returns rider's cell + all cells within k steps</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Query each cell for drivers</div>
+          <div class="step-desc">Drivers are pre-indexed by their current cell. Lookup is O(1).</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Calculate ETA for found drivers</div>
+          <div class="step-desc">Use routing engine with traffic data — not just euclidean distance</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Sort by ETA, return top N</div>
+          <div class="step-desc">Closest in time wins — could be a slightly farther driver with no traffic</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🔑</div>Cell as Sharding Key</div>
+    <p style="color:var(--muted); font-size:13px;">The H3 cell identifier becomes the partition key for the location database. Drivers in the same cell live on the same database shard — making "find drivers in this cell" a single-shard query instead of a distributed scatter-gather.</p>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 3: H3 LIBRARY -->
+<section id="h3">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">The H3 Library — Uber's Open-Source Gift</h2>
+  </div>
+
+  <div class="callout">
+    <strong>What is H3:</strong> A hexagonal-shaped hierarchical geospatial indexing system created at Uber. Open-sourced in 2018. Now used by Lyft, DoorDash, Tesla, NASA — anyone with geospatial scale problems.
+  </div>
+
+  <div class="grid-2" style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🌍</div>How H3 Sees Earth</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">H3 divides Earth's surface into hexagonal cells on a flat grid. Each cell gets a unique <strong style="color:var(--text)">64-bit integer identifier</strong>.</p>
+      <ul style="color:var(--muted); font-size:13px; padding-left:18px; line-height:2;">
+        <li><strong style="color:var(--text)">122 base cells</strong> cover the entire Earth</li>
+        <li>110 hexagons + <strong style="color:var(--text)">12 pentagons</strong></li>
+        <li>Pentagons exist because you can't tile a sphere with only hexagons</li>
+        <li>H3 treats each pentagon as a "hexagon with a missing piece"</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">🔢</div>The 64-bit Cell ID</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">Every H3 index encodes:</p>
+      <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Bit layout of an H3 index</span>
+
+<span class="kw">Mode</span>          (4 bits)   = type of index
+<span class="kw">Reserved</span>      (3 bits)   = future use
+<span class="kw">Resolution</span>    (4 bits)   = 0-15 (16 levels)
+<span class="kw">Base cell</span>     (7 bits)   = 0-121
+<span class="kw">Digits</span>        (45 bits)  = path from base
+              (3 bits × 15 levels)
+
+<span class="cmt">// Example index:</span>
+0x8928308280fffff
+<span class="cmt">// Resolution 9, in San Francisco</span></pre>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">📐</div>Resolution Levels</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">H3 supports 16 resolution levels (0-15). Each level subdivides cells into 7 smaller hexagons. Choose the right resolution for your use case:</p>
+
+    <div class="resolutions">
+      <div class="res-card">
+        <div class="res-num">Res 0</div>
+        <div class="res-area">~4.4M km²</div>
+      </div>
+      <div class="res-card">
+        <div class="res-num">Res 5</div>
+        <div class="res-area">~250 km²</div>
+      </div>
+      <div class="res-card">
+        <div class="res-num">Res 9</div>
+        <div class="res-area">~0.1 km²</div>
+      </div>
+      <div class="res-card">
+        <div class="res-num">Res 15</div>
+        <div class="res-area">~1 m²</div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:14px">
+      <strong>For Uber's use case:</strong> Resolution 8-9 is sweet spot. Cells are roughly the size of a small neighborhood (~0.1 km²). Enough drivers per cell for good matching, small enough for accurate proximity.
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 4: HIERARCHICAL GRID -->
+<section id="hierarchy">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Hierarchical Grid — Why It's Brilliant</h2>
+  </div>
+
+  <div class="callout-warn">
+    <strong>The trade-off:</strong> Small cells = high accuracy + huge storage. Big cells = low storage + poor accuracy. <strong>Hierarchical grids solve this</strong> by allowing different resolutions in different places.
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🪆</div>How Hierarchy Works</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      In H3, each hexagon at resolution N is subdivided into 7 smaller hexagons at resolution N+1. This creates a parent-child relationship that you can traverse with simple bitwise operations.
+    </p>
+    <div class="arch">
+              ┌──────────────────────┐
+              │   1 Hexagon at Res 5  │
+              │       (~250 km²)      │
+              └──────────┬───────────┘
+                         │ subdivide
+                         ▼
+              ┌──────────────────────┐
+              │  7 Hexagons at Res 6  │
+              │      (~36 km² each)   │
+              └──────────┬───────────┘
+                         │ subdivide
+                         ▼
+              ┌──────────────────────┐
+              │  49 Hexagons at Res 7 │
+              │       (~5 km² each)   │
+              └──────────────────────┘
+
+       Continue subdividing... up to Resolution 15
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🗜️</div>Data Compression Through Mixed Resolution</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      Hierarchical grids enable <strong style="color:var(--text)">spatial data compression</strong>. The genius: store data at different resolutions for different areas.
+    </p>
+
+    <div class="vs-row" style="grid-template-columns: 1fr 1fr;">
+      <div class="card" style="margin:0; background:rgba(46,213,115,0.05); border-color:rgba(46,213,115,0.2);">
+        <div class="card-title" style="color:var(--green); font-size:14px;">🌊 Ocean / Desert</div>
+        <p style="color:var(--muted); font-size:13px;">Few drivers. Use <strong style="color:var(--text)">low resolution</strong> (large cells). Saves storage. One cell can represent thousands of square km.</p>
+      </div>
+      <div class="card" style="margin:0; background:rgba(0,212,170,0.05); border-color:rgba(0,212,170,0.2);">
+        <div class="card-title" style="color:var(--primary); font-size:14px;">🏙️ Dense City</div>
+        <p style="color:var(--muted); font-size:13px;">Many drivers. Use <strong style="color:var(--text)">high resolution</strong> (small cells). Precise matching. Each cell is a city block.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">⚡</div>The Magic Trick: Truncation</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      Because the H3 index encodes the full path from the base cell, you can <strong style="color:var(--text)">truncate bits to find ancestor cells</strong>. This is a constant-time bitwise operation.
+    </p>
+    <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Child to parent conversion — O(1) bitwise truncation</span>
+
+<span class="kw">const</span> childCell  = <span class="num">0x8928308280fffff</span>; <span class="cmt">// Resolution 9</span>
+<span class="kw">const</span> parentCell = h3ToParent(childCell, <span class="num">7</span>); <span class="cmt">// Resolution 7</span>
+
+<span class="cmt">// Internally just zeroes out the last few digits</span>
+<span class="cmt">// No tree traversal needed!</span>
+
+<span class="cmt">// Use cases:</span>
+<span class="cmt">// - Aggregate driver counts by neighborhood (parent cell)</span>
+<span class="cmt">// - Switch resolution without recomputing</span>
+<span class="cmt">// - Check if a small cell is within a large region</span></pre>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 5: WHY HEXAGONS -->
+<section id="hexagons">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Why Hexagons? Not Squares or Triangles</h2>
+  </div>
+
+  <div class="callout">
+    <strong>The geometry that wins:</strong> Hexagons are the only shape where every neighbor is equidistant from the cell's center. This makes distance calculations trivial.
+  </div>
+
+  <div class="vs-row" style="margin-top:24px">
+    <div class="shape-card">
+      <div class="shape-name">Triangle</div>
+      <div class="symbol">△</div>
+      <div class="shape-detail">3 edge-neighbors, 9 vertex-neighbors</div>
+      <p style="color:var(--red); font-size:12px; margin-top:10px;">❌ 3 different distances between cells</p>
+    </div>
+    <div class="shape-card">
+      <div class="shape-name">Square</div>
+      <div class="symbol">□</div>
+      <div class="shape-detail">4 edge-neighbors, 4 vertex-neighbors</div>
+      <p style="color:var(--red); font-size:12px; margin-top:10px;">❌ 2 different distances (edge vs diagonal)</p>
+    </div>
+    <div class="shape-card winner">
+      <div class="shape-name">Hexagon</div>
+      <div class="symbol">⬡</div>
+      <div class="shape-detail">6 edge-neighbors — all equal</div>
+      <p style="color:var(--primary); font-size:12px; margin-top:10px;">✅ 1 uniform distance</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">📏</div>Why Uniform Neighbor Distance Matters</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      In a hexagonal grid, all 6 neighbors of any cell are at the same distance from the cell's center. This means:
+    </p>
+    <ul style="color:var(--muted); font-size:13px; padding-left:20px; line-height:2;">
+      <li>Distance calculations require <strong style="color:var(--text)">no extra coefficients</strong></li>
+      <li><strong style="color:var(--text)">kRing(cell, k=1)</strong> returns 6 cells at distance 1 — clean and predictable</li>
+      <li>Spatial relationships are uniform — easier to reason about</li>
+      <li>Better approximates circles (vehicle range, delivery radius)</li>
+    </ul>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">⚠️</div>The Trade-off: Imperfect Subdivision</div>
+    <p style="color:var(--muted); font-size:13px;">
+      Hexagons can't be perfectly subdivided into smaller hexagons (unlike squares, which split into 4 perfect squares). H3 handles this by subdividing each hexagon into 7 smaller hexagons with a known small error. Child hexagons are slightly rotated to fit the parent shape. The error is bounded and acceptable for proximity work.
+    </p>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 6: ALGORITHMS -->
+<section id="algorithms">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">H3 Core Algorithms — The API You'll Use</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon">📍</div>geoToH3() — Coordinate to Cell</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      Convert latitude/longitude to a cell ID at a specific resolution.
+    </p>
+    <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Find the H3 cell containing a point</span>
+<span class="kw">const</span> cellId = h3.geoToH3(
+  <span class="num">37.7749</span>,   <span class="cmt">// latitude (San Francisco)</span>
+  -<span class="num">122.4194</span>, <span class="cmt">// longitude</span>
+  <span class="num">9</span>          <span class="cmt">// resolution (0-15)</span>
+);
+
+<span class="cmt">// Returns: "8928308280fffff"</span>
+<span class="cmt">// This is the cell ID where the point is located</span>
+
+<span class="cmt">// Used when:</span>
+<span class="cmt">// - Driver updates location → which cell are they in now?</span>
+<span class="cmt">// - Rider requests ride → which cell are they in?</span></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon">🎯</div>kRing() — Find Neighbors</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      Returns all cells within k steps of a center cell. Critical for proximity search.
+    </p>
+    <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Find all cells within 2 steps</span>
+<span class="kw">const</span> nearbyCells = h3.kRing(<span class="str">"8928308280fffff"</span>, <span class="num">2</span>);
+
+<span class="cmt">// Returns 19 cells:</span>
+<span class="cmt">//   1 center cell</span>
+<span class="cmt">//   6 cells at distance 1</span>
+<span class="cmt">//   12 cells at distance 2</span>
+<span class="cmt">//   Total: 1 + 6 + 12 = 19 cells</span>
+
+<span class="cmt">// To find drivers near a rider:</span>
+<span class="kw">const</span> riderCell = h3.geoToH3(rider.lat, rider.lng, <span class="num">9</span>);
+<span class="kw">const</span> searchCells = h3.kRing(riderCell, <span class="num">2</span>);
+<span class="kw">const</span> nearbyDrivers = <span class="kw">await</span> db.query(<span class="str">`
+  SELECT * FROM drivers
+  WHERE current_cell IN ($1)
+  AND status = 'available'
+`</span>, [searchCells]);</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon">🪆</div>h3ToParent() / h3ToChildren()</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      Navigate the resolution hierarchy. Useful for aggregation and adaptive resolution.
+    </p>
+    <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Get parent cell at lower resolution</span>
+<span class="kw">const</span> neighborhood = h3.h3ToParent(blockCell, <span class="num">7</span>);
+<span class="cmt">// Aggregate drivers by neighborhood:</span>
+<span class="cmt">//   SELECT count(*) FROM drivers GROUP BY parent_cell</span>
+
+<span class="cmt">// Get all child cells at higher resolution</span>
+<span class="kw">const</span> blocks = h3.h3ToChildren(neighborhood, <span class="num">9</span>);
+<span class="cmt">// Returns 7 child cells (neighborhood subdivided)</span>
+
+<span class="cmt">// Used for:</span>
+<span class="cmt">// - Surge pricing zones (neighborhood-level)</span>
+<span class="cmt">// - Driver heatmaps</span>
+<span class="cmt">// - Search radius expansion (start small, expand outward)</span></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon">📐</div>Other Useful Functions</div>
+    <table>
+      <tr><th>Function</th><th>What It Does</th></tr>
+      <tr><td><code>h3Distance(a, b)</code></td><td style="font-size:12px; color:var(--muted);">Grid distance between two cells (in cell steps)</td></tr>
+      <tr><td><code>polyfill(polygon, res)</code></td><td style="font-size:12px; color:var(--muted);">Get all cells covering a polygon (delivery zone)</td></tr>
+      <tr><td><code>h3ToGeo(cell)</code></td><td style="font-size:12px; color:var(--muted);">Get center coordinates of a cell</td></tr>
+      <tr><td><code>h3ToGeoBoundary(cell)</code></td><td style="font-size:12px; color:var(--muted);">Get all 6 vertices of a hexagon</td></tr>
+      <tr><td><code>compactCells(cells)</code></td><td style="font-size:12px; color:var(--muted);">Compress cell set using mixed resolutions</td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 7: LOCATION STORAGE -->
+<section id="storage">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Location Storage — Cassandra + Redis</h2>
+  </div>
+
+  <div class="callout">
+    <strong>The dual-storage strategy:</strong> Each driver app sends location every few seconds. We need to absorb massive writes (Cassandra) AND serve fast reads for matching (Redis). Use both.
+  </div>
+
+  <div class="arch" style="margin-top:24px">
+                    DRIVER APPS (1M+ drivers)
+                            │
+                            │ Location ping every 4s
+                            ▼
+                  ┌─────────────────────┐
+                  │  LOCATION SERVICE    │
+                  └──────────┬──────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+       ┌────────────┐ ┌────────────┐ ┌────────────┐
+       │   REDIS    │ │  CASSANDRA  │ │  KAFKA     │
+       │ (recent)   │ │ (history)   │ │ (events)   │
+       │            │ │             │ │            │
+       │ Read path  │ │ Write path  │ │ Streaming  │
+       │ for match  │ │ for analy.  │ │ for ML/    │
+       │            │ │             │ │ pricing    │
+       └────────────┘ └────────────┘ └────────────┘
+  </div>
+
+  <div class="grid-2" style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">⚡</div>Redis — Read Layer</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Stores recent driver locations for fast matching.
+      </p>
+      <pre style="margin:0; font-size:11px;">
+<span class="cmt"># Key per H3 cell, value = set of drivers</span>
+
+SADD cell:8928308280fffff:drivers
+  "driver_001"
+  "driver_042"
+  "driver_077"
+
+EXPIRE cell:8928308280fffff:drivers 60
+
+<span class="cmt"># When driver moves to new cell:</span>
+SREM cell:OLD_CELL:drivers "driver_001"
+SADD cell:NEW_CELL:drivers "driver_001"
+
+<span class="cmt"># Driver's current location:</span>
+HSET driver:001:location
+  cell "8928308280fffff"
+  lat  37.7749
+  lng  -122.4194
+  ts   1699189200000</pre>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">💾</div>Cassandra — Write Layer</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Stores complete location history for analytics, ML training, surge pricing.
+      </p>
+      <pre style="margin:0; font-size:11px;">
+<span class="kw">CREATE TABLE</span> location_history (
+  driver_id   UUID,
+  timestamp   TIMESTAMP,
+  lat         DOUBLE,
+  lng         DOUBLE,
+  h3_cell     TEXT,
+  speed_mps   DOUBLE,
+  heading_deg DOUBLE,
+  accuracy_m  DOUBLE,
+  source      TEXT,  <span class="cmt">-- 'gps', 'network', 'fused'</span>
+  <span class="kw">PRIMARY KEY</span> ((driver_id), timestamp)
+) <span class="kw">WITH</span> CLUSTERING ORDER <span class="kw">BY</span> (timestamp <span class="kw">DESC</span>);
+
+<span class="cmt">-- Sharded by driver_id</span>
+<span class="cmt">-- Each driver's history = one wide row</span>
+<span class="cmt">-- Optimized for time-series writes</span></pre>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">📊</div>Why This Split Works</div>
+    <table>
+      <tr><th>Workload</th><th>Best Tool</th><th>Why</th></tr>
+      <tr>
+        <td>Match queries (read)</td>
+        <td class="td-green">Redis</td>
+        <td style="font-size:12px; color:var(--muted);">Microsecond lookup; the bottleneck of "find nearby drivers"</td>
+      </tr>
+      <tr>
+        <td>Location pings (write)</td>
+        <td class="td-blue">Cassandra</td>
+        <td style="font-size:12px; color:var(--muted);">Optimized for high write throughput, sharded by driver</td>
+      </tr>
+      <tr>
+        <td>Historical analytics</td>
+        <td class="td-blue">Cassandra</td>
+        <td style="font-size:12px; color:var(--muted);">Time-series data, append-only, queryable by driver</td>
+      </tr>
+      <tr>
+        <td>Real-time events</td>
+        <td class="td-accent">Kafka</td>
+        <td style="font-size:12px; color:var(--muted);">Streams to ML pipelines, surge pricing, fraud detection</td>
+      </tr>
+    </table>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 8: MAP MATCHING -->
+<section id="mapmatching">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Map Matching — Cleaning Noisy GPS</h2>
+  </div>
+
+  <div class="callout-warn">
+    <strong>The reality:</strong> GPS is noisy. A driver in a downtown street with skyscrapers might appear to be 50 meters off the road. In tunnels, the signal vanishes. Without correction, the system thinks drivers are off-road or teleporting.
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🛰️</div>What Goes Wrong With Raw GPS</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Multipath errors in cities</div>
+          <div class="step-desc">GPS signals bounce off buildings. Apparent position is 10-50m off.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Tunnels &amp; underpasses</div>
+          <div class="step-desc">No signal at all. Driver "disappears" for 30+ seconds.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Low accuracy in bad weather</div>
+          <div class="step-desc">Cloud cover degrades signal. Reported accuracy radius balloons.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Sparse sampling</div>
+          <div class="step-desc">If app saves battery, pings might be every 30s. Between pings = blind.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🗺️</div>Map Matching — The Fix</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      Map matching takes the messy GPS sequence and snaps it to actual road segments. The output: a sequence of road segments the driver actually traveled.
+    </p>
+
+    <div class="arch">
+       RAW GPS PINGS                    MAP-MATCHED POSITION
+       (noisy, off-road)         →      (snapped to roads)
+
+       Ping 1: 37.7749, -122.4194  →   Road segment: Market St
+       Ping 2: 37.7751, -122.4191  →   Road segment: Market St
+       Ping 3: 37.7754, -122.4188  →   Road segment: Market St
+       (signal lost in tunnel)          (interpolated based
+                                         on speed + direction)
+       Ping 4: 37.7758, -122.4180  →   Road segment: 5th St
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🔄</div>Storage Pattern: Buffer in Redis, Match, Persist</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Raw pings arrive every few seconds</div>
+          <div class="step-desc">Buffered in Redis (recent N pings per driver)</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Map matching runs on buffered pings</div>
+          <div class="step-desc">Needs multiple pings to determine direction + snap correctly</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Matched road segments stored separately</div>
+          <div class="step-desc">Separate Cassandra schema. Used for ETA, billing, analytics.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Raw GPS also kept</div>
+          <div class="step-desc">For debugging, ML training, disputed-trip resolution</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 9: SCALABILITY -->
+<section id="scalability">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2 class="section-title">Scalability — How Uber Hits 1M Req/Sec</h2>
+  </div>
+
+  <div class="callout">
+    <strong>The numbers:</strong> 1 million proximity queries per second. Each must complete in under 100ms. The system relies on H3-based sharding, aggressive caching, and read-write separation.
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🔀</div>Sharding by H3 Cell</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+      The H3 cell identifier becomes the natural sharding key. Drivers in the same cell live on the same shard. Queries for nearby drivers hit a small number of shards (one per cell in the search radius).
+    </p>
+    <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Sharding by H3 parent cell (low resolution = bigger shards)</span>
+
+shard_id = h3.h3ToParent(driver_cell, RES_<span class="num">5</span>) % NUM_SHARDS;
+
+<span class="cmt">// Why parent cell?</span>
+<span class="cmt">// - Cells in same neighborhood end up on same shard</span>
+<span class="cmt">// - kRing queries hit fewer shards (good for performance)</span>
+<span class="cmt">// - Driver moves within neighborhood = stays on same shard</span>
+<span class="cmt">// - Cross-shard queries only when crossing big boundaries</span></pre>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">⚡</div>Multi-Layer Cache Strategy</div>
+    <table>
+      <tr><th>Layer</th><th>Stores</th><th>TTL</th><th>Purpose</th></tr>
+      <tr>
+        <td><strong>App-local cache</strong></td>
+        <td style="font-size:12px; color:var(--muted);">Recent match results</td>
+        <td class="td-green">5s</td>
+        <td style="font-size:12px; color:var(--muted);">Reduce duplicate queries</td>
+      </tr>
+      <tr>
+        <td><strong>Redis (per-cell)</strong></td>
+        <td style="font-size:12px; color:var(--muted);">Driver sets by cell</td>
+        <td class="td-accent">60s</td>
+        <td style="font-size:12px; color:var(--muted);">Hot match path</td>
+      </tr>
+      <tr>
+        <td><strong>Redis (per-driver)</strong></td>
+        <td style="font-size:12px; color:var(--muted);">Driver's current cell</td>
+        <td class="td-accent">30s</td>
+        <td style="font-size:12px; color:var(--muted);">Fast location lookup</td>
+      </tr>
+      <tr>
+        <td><strong>Cassandra</strong></td>
+        <td style="font-size:12px; color:var(--muted);">Historical pings</td>
+        <td class="td-red">∞ (TTL by policy)</td>
+        <td style="font-size:12px; color:var(--muted);">Analytics, ML, billing</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🌍</div>Geographic Data Center Distribution</div>
+    <p style="color:var(--muted); font-size:13px;">
+      Drivers and riders in the same city naturally land on the same regional data center. Cross-region queries are rare (you don't book a ride in Tokyo while standing in NYC). This makes data center co-location work brilliantly with H3 cell-based sharding.
+    </p>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🎯</div>The Complete Request Flow</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Rider opens app, requests nearby cars</div>
+          <div class="step-desc">Request goes to closest regional data center</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Convert rider lat/lng to H3 cell at Res 9</div>
+          <div class="step-desc">Constant-time operation, no I/O</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">kRing(cell, k=2) → 19 nearby cells</div>
+          <div class="step-desc">Covers area ~3km radius around rider</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Query Redis for drivers in those 19 cells</div>
+          <div class="step-desc">Parallel SMEMBERS on each cell key. Result: list of driver IDs.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Fetch driver details + map-matched positions</div>
+          <div class="step-desc">Filter by status (available), product (UberX vs Black)</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <div class="step-title">Calculate ETA for each candidate</div>
+          <div class="step-desc">Routing engine with real-time traffic</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">7</div>
+        <div class="step-content">
+          <div class="step-title">Sort by ETA, return top N to rider</div>
+          <div class="step-desc">Total time budget: under 100ms</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- CHEAT SHEET -->
+<section id="cheatsheet">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <h2 class="section-title">Cheat Sheet — Quick Reference</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Use this in interviews</strong> to justify every design decision with the underlying reason.
+  </div>
+
+  <table style="margin-top:24px">
+    <tr><th>Decision</th><th>Choice</th><th>Why</th></tr>
+    <tr>
+      <td><strong>Location indexing</strong></td>
+      <td class="td-green">H3 (hexagonal)</td>
+      <td style="font-size:12px; color:var(--muted);">Equal neighbor distance, hierarchical, open-source</td>
+    </tr>
+    <tr>
+      <td><strong>Cell shape</strong></td>
+      <td class="td-green">Hexagon (not square)</td>
+      <td style="font-size:12px; color:var(--muted);">All 6 neighbors equidistant — distance calc is trivial</td>
+    </tr>
+    <tr>
+      <td><strong>Resolution</strong></td>
+      <td class="td-green">Level 8-9 (~0.1 km² cells)</td>
+      <td style="font-size:12px; color:var(--muted);">Neighborhood-sized — balance precision vs query cost</td>
+    </tr>
+    <tr>
+      <td><strong>Sharding key</strong></td>
+      <td class="td-green">H3 cell ID (parent level)</td>
+      <td style="font-size:12px; color:var(--muted);">Natural locality — drivers in same area on same shard</td>
+    </tr>
+    <tr>
+      <td><strong>Cache layer</strong></td>
+      <td class="td-green">Redis (per-cell sets)</td>
+      <td style="font-size:12px; color:var(--muted);">Microsecond reads, SADD/SREM on cell changes</td>
+    </tr>
+    <tr>
+      <td><strong>Durable storage</strong></td>
+      <td class="td-green">Cassandra</td>
+      <td style="font-size:12px; color:var(--muted);">High write throughput, time-series friendly</td>
+    </tr>
+    <tr>
+      <td><strong>Streaming layer</strong></td>
+      <td class="td-green">Kafka</td>
+      <td style="font-size:12px; color:var(--muted);">Real-time ML, surge pricing, fraud detection</td>
+    </tr>
+    <tr>
+      <td><strong>Search method</strong></td>
+      <td class="td-green">kRing → query cells</td>
+      <td style="font-size:12px; color:var(--muted);">Bounded query, O(1) per cell, no full scan</td>
+    </tr>
+    <tr>
+      <td><strong>Driver ranking</strong></td>
+      <td class="td-green">ETA-based, not distance</td>
+      <td style="font-size:12px; color:var(--muted);">Traffic matters more than straight-line distance</td>
+    </tr>
+    <tr>
+      <td><strong>GPS cleanup</strong></td>
+      <td class="td-green">Map matching</td>
+      <td style="font-size:12px; color:var(--muted);">Snap noisy pings to actual road network</td>
+    </tr>
+    <tr>
+      <td><strong>Update frequency</strong></td>
+      <td class="td-green">Every 4-5 seconds</td>
+      <td style="font-size:12px; color:var(--muted);">Balance freshness vs battery + bandwidth</td>
+    </tr>
+  </table>
+
+  <!-- INTERVIEW QUESTIONS -->
+  <div style="margin-top:40px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">🎯 Interview Follow-Up Questions</div>
+
+    <div class="qa-card">
+      <div class="qa-q">Why not just use PostGIS / a geospatial database?</div>
+      <div class="qa-a">PostGIS works great at small scale. But at 1M req/sec, the locking overhead and disk I/O become bottlenecks. H3 + Redis lets you do everything in-memory with simple data structures (sets keyed by cell). PostGIS adds 10-100ms latency where H3 adds microseconds.</div>
+    </div>
+
+    <div class="qa-card">
+      <div class="qa-q">What happens when a driver crosses a cell boundary?</div>
+      <div class="qa-a">On every location update: compute new H3 cell. If different from previous: SREM driver from old cell's set, SADD to new cell's set. Two Redis operations, atomic via MULTI/EXEC. Then update driver:{id}:location hash with new cell.</div>
+    </div>
+
+    <div class="qa-card">
+      <div class="qa-q">How do you handle the pentagon cells?</div>
+      <div class="qa-a">12 of 122 base cells are pentagons (centered on poles + 10 in tundra/ocean areas). Almost no Uber traffic there. H3 has special handling but for typical use cases, pentagons can be ignored. Distance calculations near pentagons have slight distortion — bounded and well-documented.</div>
+    </div>
+
+    <div class="qa-card">
+      <div class="qa-q">How do you scale the proximity service horizontally?</div>
+      <div class="qa-a">Shard by H3 parent cell (low resolution → big regions). Each shard handles a city or region. Riders/drivers in same area land on same shard. Cross-shard queries only when search radius crosses shard boundary — rare and manageable.</div>
+    </div>
+
+    <div class="qa-card">
+      <div class="qa-q">What if there are no drivers in nearby cells?</div>
+      <div class="qa-a">Expand the search: kRing(cell, k=3), then k=4, etc. Or go up a resolution: query at parent cell level (covers larger area). Cap the expansion — if no drivers within 5km, return "no drivers available" rather than wait forever.</div>
+    </div>
+
+    <div class="qa-card">
+      <div class="qa-q">How does this differ from Tinder's S2-based location matching?</div>
+      <div class="qa-a">S2 (Google) uses square cells on a curved surface. H3 (Uber) uses hexagons on a flat projection. Both are hierarchical. H3's hexagons have equal-distance neighbors (better for proximity). S2's squares preserve curvature better (better for global queries). Different trade-offs for different use cases.</div>
+    </div>
+  </div>
+
+  <!-- FINAL TAKEAWAY -->
+  <div style="margin-top:40px">
+    <div class="card" style="border-left:3px solid var(--primary);">
+      <div class="card-title"><div class="icon">💡</div>One Thing to Remember</div>
+      <p style="color:var(--text); font-size:15px; line-height:1.8;">
+        The hard part of "find nearby drivers" isn't the math — it's the <strong>data structure</strong>. Once you index drivers by <strong>H3 cells</strong> instead of raw lat/lng, the problem transforms:
+      </p>
+      <ul style="color:var(--text); font-size:14px; padding-left:20px; line-height:2; margin-top:12px;">
+        <li>From O(N) distance scan → O(1) cell lookup</li>
+        <li>From single-point search → bounded area search via kRing</li>
+        <li>From hot spots → naturally sharded by geography</li>
+        <li>From distance approximation → uniform hexagonal grid</li>
+      </ul>
+      <p style="color:var(--text); font-size:15px; line-height:1.8; margin-top:12px;">
+        <strong>This is the system design lesson:</strong> When you're stuck on performance, change the data structure. The right index turns an impossible query into an obvious one.
+      </p>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer>
+  <p>Uber Nearby Drivers — System Design Study Guide</p>
+  <p style="margin-top:8px">Based on "How Uber Finds Nearby Drivers at 1 Million Requests per Second" by Neo Kim</p>
+  <p style="margin-top:8px; color:var(--primary);">H3 is open-source at h3geo.org — used by Lyft, DoorDash, Tesla, and NASA</p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,3028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube System Design — Complete Study Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #17171f;
+    --border: #2a2a3a;
+    --primary: #ff4757;
+    --accent: #ffa502;
+    --blue: #5352ed;
+    --green: #2ed573;
+    --text: #e8e8f0;
+    --muted: #7f7f9a;
+    --code-bg: #0d1117;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a1f 50%, #0a0f1a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 80px 40px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 60% 40%, rgba(255,71,87,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 30% 70%, rgba(83,82,237,0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,71,87,0.15);
+    border: 1px solid rgba(255,71,87,0.3);
+    color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 14px;
+    border-radius: 100px;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(40px, 7vw, 72px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .hero h1 span { color: var(--primary); }
+  .hero p {
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 560px;
+    margin: 0 auto 40px;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ---- NAV ---- */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .nav a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 16px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav a:hover { color: var(--text); border-color: var(--primary); }
+
+  /* ---- LAYOUT ---- */
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  /* ---- SECTION HEADER ---- */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--primary);
+    background: rgba(255,71,87,0.1);
+    border: 1px solid rgba(255,71,87,0.2);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #3a3a5a; }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title .icon {
+    width: 32px; height: 32px;
+    background: rgba(255,71,87,0.1);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  /* ---- GRID ---- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  /* ---- Q&A CARDS ---- */
+  .qa-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 12px 12px 0;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+  .qa-q {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .qa-a {
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .qa-meta {
+    display: flex; gap: 20px; flex-wrap: wrap;
+  }
+  .qa-meta-item {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .qa-meta-item strong { color: var(--accent); }
+
+  /* ---- CODE BLOCKS ---- */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid #1e2a38;
+    border-radius: 10px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 16px 0;
+    color: #c9d1d9;
+  }
+  .code-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .num { color: #79c0ff; }
+  .key { color: #7ee787; }
+  .cmt { color: #8b949e; font-style: italic; }
+  .url-color { color: #ffa657; }
+
+  /* ---- FLOW STEPS ---- */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .step-num {
+    min-width: 32px; height: 32px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .step-content { flex: 1; }
+  .step-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .step-desc { color: var(--muted); font-size: 13px; }
+
+  /* ---- BADGES ---- */
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .badge-get { background: rgba(46,213,115,0.15); color: var(--green); border: 1px solid rgba(46,213,115,0.3); }
+  .badge-post { background: rgba(255,165,2,0.15); color: var(--accent); border: 1px solid rgba(255,165,2,0.3); }
+  .badge-delete { background: rgba(255,71,87,0.15); color: var(--primary); border: 1px solid rgba(255,71,87,0.3); }
+
+  /* ---- ENDPOINT CARDS ---- */
+  .endpoint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .endpoint-header {
+    padding: 16px 24px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .endpoint-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .endpoint-body { padding: 20px 24px; }
+  .endpoint-desc {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  /* ---- TRADEOFF TABLE ---- */
+  .tradeoff {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+  .tradeoff-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tradeoff-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .pros, .cons {
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .pros {
+    background: rgba(46,213,115,0.05);
+    border: 1px solid rgba(46,213,115,0.15);
+  }
+  .cons {
+    background: rgba(255,71,87,0.05);
+    border: 1px solid rgba(255,71,87,0.15);
+  }
+  .pros-title { color: var(--green); font-size: 12px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; }
+  .cons-title { color: var(--primary); font-size: 12px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; }
+  .pros li, .cons li { font-size: 13px; color: var(--muted); margin-left: 16px; margin-bottom: 4px; }
+
+  /* ---- METRICS TABLE ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .td-green { color: var(--green); font-family: 'JetBrains Mono', monospace; }
+  .td-accent { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .td-red { color: var(--primary); font-family: 'JetBrains Mono', monospace; }
+
+  /* ---- CALLOUT ---- */
+  .callout {
+    background: rgba(255,165,2,0.08);
+    border: 1px solid rgba(255,165,2,0.2);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout strong { color: var(--accent); }
+
+  /* ---- ARCHITECTURE DIAGRAM ---- */
+  .arch {
+    background: var(--code-bg);
+    border: 1px solid #1e2a38;
+    border-radius: 12px;
+    padding: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+  .arch-box {
+    display: inline-block;
+    border: 1px solid #2a3f5f;
+    border-radius: 6px;
+    padding: 4px 14px;
+    background: #161b22;
+    color: #c9d1d9;
+  }
+  .arch-arrow { color: #6e7681; }
+  .arch-label { color: var(--muted); font-size: 11px; margin-left: 8px; }
+
+  /* ---- TAGS ---- */
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    color: var(--muted);
+  }
+
+  /* ---- DIVIDER ---- */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 60px 0; }
+
+  /* ---- FOOTER ---- */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* ---- SCROLL ---- */
+  html { scroll-behavior: smooth; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 680px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .tradeoff-row { grid-template-columns: 1fr; }
+    .hero-stats { gap: 24px; }
+    .container { padding: 40px 20px; }
+    .hero { padding: 60px 20px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">System Design Interview Prep</div>
+  <h1>Design <span>YouTube</span><br>From Scratch</h1>
+  <p>A complete production-level guide — from interview questions to database sharding, transcoding pipelines, and real REST API examples.</p>
+  <p style="color:var(--accent); font-size:13px; max-width:560px; margin:-30px auto 30px; font-style:italic;">📚 Educational design using generic AWS stack. Real YouTube uses Google internal tools (Colossus, Spanner, Pub/Sub) — see Section 19 for the comparison.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">2.5B</div><div class="stat-label">Monthly Users</div></div>
+    <div class="stat"><div class="stat-num">500h</div><div class="stat-label">Uploaded / Minute</div></div>
+    <div class="stat"><div class="stat-num">100:1</div><div class="stat-label">Read:Write Ratio</div></div>
+    <div class="stat"><div class="stat-num">3,000+</div><div class="stat-label">CDN Edge Nodes</div></div>
+  </div>
+</section>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="#questions">Interview Q&A</a>
+  <a href="#requirements">Requirements</a>
+  <a href="#capacity">Capacity</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#api">REST API</a>
+  <a href="#transcoding">Transcoding</a>
+  <a href="#streaming">Streaming</a>
+  <a href="#database">Database</a>
+  <a href="#caching">Caching</a>
+  <a href="#multiregion">Multi-Region</a>
+  <a href="#tradeoffs">Trade-offs</a>
+  <a href="#tips">Interview Tips</a>
+  <a href="#buildfromscratch">Real Architecture</a>
+  <a href="#recommendations">Recommendations</a>
+  <a href="#livestreaming">Live Streaming</a>
+  <a href="#comments">Comments</a>
+  <a href="#contentid">Content ID</a>
+  <a href="#analytics">Analytics</a>
+  <a href="#realvsguide">Real YouTube Stack</a>
+</nav>
+
+<!-- SECTION 1: INTERVIEW QUESTIONS -->
+<section id="questions">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2 class="section-title">Interview Questions to Ask First</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Pro tip:</strong> Always start by asking clarifying questions. This shows you think about constraints before designing. Interviewers expect this from Senior+ engineers.
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q">❓ What scale are we designing for?</div>
+    <div class="qa-a"><strong>Answer:</strong> 1 million uploads per day, 100 million DAU.</div>
+    <div class="qa-meta">
+      <span class="qa-meta-item"><strong>Why:</strong> Drives sharding, partitioning, and caching decisions</span>
+      <span class="qa-meta-item"><strong>Insight:</strong> Shows understanding of capacity planning</span>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q">❓ What is the read-to-write ratio?</div>
+    <div class="qa-a"><strong>Answer:</strong> About 100 views for every 1 upload.</div>
+    <div class="qa-meta">
+      <span class="qa-meta-item"><strong>Why:</strong> Design heavily favors caching and streaming optimization</span>
+      <span class="qa-meta-item"><strong>Insight:</strong> Shows awareness of workload patterns</span>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q">❓ What is the maximum video file size?</div>
+    <div class="qa-a"><strong>Answer:</strong> 256 GB.</div>
+    <div class="qa-meta">
+      <span class="qa-meta-item"><strong>Why:</strong> Forces you to use multipart uploads and chunking</span>
+      <span class="qa-meta-item"><strong>Insight:</strong> Shows you consider edge cases</span>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q">❓ What video formats and resolutions do we support?</div>
+    <div class="qa-a"><strong>Answer:</strong> MP4, AVI, MOV — from 240p to 4K.</div>
+    <div class="qa-meta">
+      <span class="qa-meta-item"><strong>Why:</strong> Needs a transcoding pipeline with multiple output renditions</span>
+      <span class="qa-meta-item"><strong>Insight:</strong> Shows attention to real-world constraints</span>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q">❓ What's the target latency for first frame?</div>
+    <div class="qa-a"><strong>Answer:</strong> Under 500ms.</div>
+    <div class="qa-meta">
+      <span class="qa-meta-item"><strong>Why:</strong> Requires CDN edge caching and adaptive streaming</span>
+      <span class="qa-meta-item"><strong>Insight:</strong> Shows focus on user experience</span>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-q">❓ Is eventual consistency acceptable for new uploads?</div>
+    <div class="qa-a"><strong>Answer:</strong> Yes — users can wait 10-30 minutes for transcoding.</div>
+    <div class="qa-meta">
+      <span class="qa-meta-item"><strong>Why:</strong> Availability over strict immediacy (CAP theorem)</span>
+      <span class="qa-meta-item"><strong>Insight:</strong> Shows distributed systems knowledge</span>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 2: REQUIREMENTS -->
+<section id="requirements">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2 class="section-title">System Requirements</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="icon">⚡</div> Functional Requirements</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Upload Videos</div>
+            <div class="step-desc">Accept files up to 256 GB, resume interrupted uploads, multipart chunking</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Stream Videos</div>
+            <div class="step-desc">Adaptive bitrate, first frame &lt;500ms, smooth playback globally</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Search Videos</div>
+            <div class="step-desc">Full-text search on titles & descriptions, cursor-based pagination</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Track Progress</div>
+            <div class="step-desc">Resume playback position, handle millions of writes/second</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">🔒</div> Non-Functional Requirements</div>
+      <table>
+        <tr><th>Requirement</th><th>Target</th></tr>
+        <tr><td>Availability</td><td class="td-green">99.9%</td></tr>
+        <tr><td>First Frame</td><td class="td-green">&lt;500ms</td></tr>
+        <tr><td>Upload Processing</td><td class="td-accent">10–30 min</td></tr>
+        <tr><td>Uptime</td><td class="td-green">99.99%</td></tr>
+        <tr><td>Consistency</td><td class="td-accent">Eventual</td></tr>
+        <tr><td>Max File Size</td><td class="td-accent">256 GB</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 3: CAPACITY -->
+<section id="capacity">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Capacity Planning</h2>
+  </div>
+
+  <table>
+    <tr>
+      <th>Metric</th>
+      <th>Calculation</th>
+      <th>Result</th>
+    </tr>
+    <tr><td>Daily Uploads</td><td>Given</td><td class="td-accent">1M videos/day</td></tr>
+    <tr><td>Uploads/sec (avg)</td><td>1M / 86,400</td><td class="td-accent">~12/sec</td></tr>
+    <tr><td>Peak Uploads/sec</td><td>12 × 5× peak multiplier</td><td class="td-red">~60/sec</td></tr>
+    <tr><td>Daily Active Users</td><td>Given</td><td class="td-accent">100M DAU</td></tr>
+    <tr><td>Read:Write Ratio</td><td>Given</td><td class="td-green">100:1</td></tr>
+    <tr><td>Resolutions per video</td><td>240p, 480p, 720p, 1080p, 2K, 4K</td><td class="td-accent">6</td></tr>
+    <tr><td>Segments per video (10 min)</td><td>10 min / 4 sec each</td><td class="td-accent">~150 segments</td></tr>
+    <tr><td>Total segments/day</td><td>1M × 6 resolutions × 150 segments</td><td class="td-red">900M segments/day</td></tr>
+    <tr><td>Storage per segment</td><td>~3 MB avg</td><td class="td-accent">3 MB</td></tr>
+    <tr><td>Daily storage growth</td><td>900M × 3MB</td><td class="td-red">~2.7 PB/day</td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>Key insight:</strong> Read-heavy (100:1) means we should invest heavily in CDN and caching. Writing 1M videos/day is much smaller than serving 100M users watching those videos.
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 4: ARCHITECTURE -->
+<section id="architecture">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2 class="section-title">High-Level Architecture</h2>
+  </div>
+
+  <div class="callout" style="margin-top:20px;">
+    <strong>⚠️ Generic Stack Note:</strong> The architecture below uses S3, Kafka, and PostgreSQL — standard cloud building blocks suitable for any company designing a YouTube clone. <strong>Real YouTube uses Google internals</strong> (Colossus, Spanner, Pub/Sub). See <a href="#realvsguide" style="color:var(--accent);">Section 19</a> for the full comparison.
+  </div>
+
+  <div class="arch">
+┌──────────────────────────────────────────────────────────────────┐
+│                         CLIENT LAYER                             │
+│           Web Browser  ·  iOS App  ·  Android App               │
+└──────────────────────┬───────────────────┬───────────────────────┘
+                       │                   │
+             ┌─────────▼─────────┐  ┌──────▼──────────────────────┐
+             │   API GATEWAY     │  │   CDN EDGE NODES             │
+             │  Auth · Rate Limit│  │  3,000+ locations worldwide  │
+             │  Routing · SSL    │  │  Video Segments · Manifests  │
+             └────────┬──────────┘  └─────────────────────────────-┘
+                      │
+     ┌────────────────┼──────────────────────┐
+     │                │                      │
+┌────▼─────┐   ┌──────▼──────┐   ┌──────────▼─────┐
+│ UPLOAD   │   │  STREAMING  │   │    SEARCH       │
+│ SERVICE  │   │  SERVICE    │   │    SERVICE      │
+│          │   │             │   │                 │
+│ Pre-sign │   │ Manifest    │   │ Elasticsearch   │
+│ S3 URLs  │   │ Adaptive    │   │ Full-text index │
+└────┬─────┘   │ Bitrate     │   └────────-────────┘
+     │         └─────────────┘
+     ▼
+┌──────────┐    ┌───────────────────────────┐
+│  S3 Raw  │───▶│   TRANSCODING PIPELINE    │
+│  Storage │    │  Kafka Queue → Workers    │
+└──────────┘    │  FFmpeg → 6 Resolutions   │
+                └──────────────┬────────────┘
+                               │
+                ┌──────────────▼────────────┐
+                │   S3 PROCESSED STORAGE    │
+                │   video/720p/segment-001  │
+                │   video/1080p/segment-001 │
+                └───────────────────────────┘
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><div class="icon">📤</div>Upload Service</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+        <li>Generates pre-signed S3 URLs</li>
+        <li>Client uploads directly to S3</li>
+        <li>Bypasses application servers</li>
+        <li>Triggers transcoding on completion</li>
+      </ul>
+      <div class="tags">
+        <span class="tag">REST API</span>
+        <span class="tag">Pre-signed URLs</span>
+        <span class="tag">S3</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">▶️</div>Streaming Service</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+        <li>Returns HLS/DASH manifest URL</li>
+        <li>Client adapts quality in real-time</li>
+        <li>Segments served from CDN</li>
+        <li>Tracks watch progress</li>
+      </ul>
+      <div class="tags">
+        <span class="tag">HLS</span>
+        <span class="tag">DASH</span>
+        <span class="tag">Adaptive Bitrate</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">🔍</div>Search Service</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+        <li>Full-text search on titles/desc</li>
+        <li>Cursor-based pagination</li>
+        <li>Elasticsearch under the hood</li>
+        <li>Eventual consistency (OK for search)</li>
+      </ul>
+      <div class="tags">
+        <span class="tag">Elasticsearch</span>
+        <span class="tag">Cursor Pagination</span>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 5: REST API -->
+<section id="api">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2 class="section-title">REST API — Real Examples</h2>
+  </div>
+
+  <!-- ENDPOINT 1 -->
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/v1/videos</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="endpoint-desc">Initiate a video upload. Server returns a pre-signed S3 URL — client uploads directly to S3, bypassing application servers entirely.</div>
+
+      <div class="code-label">REQUEST</div>
+      <pre><span class="kw">POST</span> /v1/videos
+<span class="kw">Authorization:</span> <span class="str">Bearer eyJhbGciOiJIUzI1NiIs...</span>
+<span class="kw">Content-Type:</span> <span class="str">application/json</span>
+
+{
+  <span class="key">"title"</span>: <span class="str">"System Design Masterclass"</span>,
+  <span class="key">"description"</span>: <span class="str">"Deep dive into distributed systems"</span>,
+  <span class="key">"file_size"</span>: <span class="num">2147483648</span>,   <span class="cmt">// 2 GB in bytes</span>
+  <span class="key">"content_type"</span>: <span class="str">"video/mp4"</span>
+}</pre>
+
+      <div class="code-label">RESPONSE — 201 Created</div>
+      <pre>{
+  <span class="key">"video_id"</span>: <span class="str">"vid_8xKp2mNqRs"</span>,
+  <span class="key">"upload_url"</span>: <span class="url-color">"https://s3.amazonaws.com/yt-raw/vid_8xKp2mNqRs
+             ?X-Amz-Algorithm=AWS4-HMAC-SHA256
+             &X-Amz-Credential=AKIAIOSFODNN7...
+             &X-Amz-Expires=3600
+             &X-Amz-Signature=fea454..."</span>,
+  <span class="key">"expires_in"</span>: <span class="num">3600</span>,
+  <span class="key">"status"</span>: <span class="str">"uploading"</span>
+}</pre>
+
+      <div class="callout"><strong>Design note:</strong> The client now uploads the 2GB file directly to S3 using the signed URL. No application server touches the video bytes. This is why YouTube can handle millions of concurrent uploads.</div>
+    </div>
+  </div>
+
+  <!-- ENDPOINT 2 -->
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/v1/videos/:video_id</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="endpoint-desc">Get video metadata and the CDN URL for the HLS/DASH manifest. The client uses this to begin adaptive bitrate streaming.</div>
+
+      <div class="code-label">REQUEST</div>
+      <pre><span class="kw">GET</span> /v1/videos/vid_8xKp2mNqRs
+<span class="kw">Authorization:</span> <span class="str">Bearer eyJhbGciOiJIUzI1NiIs...</span></pre>
+
+      <div class="code-label">RESPONSE — 200 OK</div>
+      <pre>{
+  <span class="key">"video_id"</span>: <span class="str">"vid_8xKp2mNqRs"</span>,
+  <span class="key">"title"</span>: <span class="str">"System Design Masterclass"</span>,
+  <span class="key">"duration_seconds"</span>: <span class="num">3600</span>,
+  <span class="key">"status"</span>: <span class="str">"ready"</span>,
+  <span class="key">"view_count"</span>: <span class="num">1482930</span>,
+  <span class="key">"manifest_urls"</span>: {
+    <span class="key">"hls"</span>: <span class="url-color">"https://cdn.yt.com/vid_8xKp2mNqRs/manifest.m3u8"</span>,
+    <span class="key">"dash"</span>: <span class="url-color">"https://cdn.yt.com/vid_8xKp2mNqRs/manifest.mpd"</span>
+  },
+  <span class="key">"available_resolutions"</span>: [<span class="str">"240p"</span>, <span class="str">"480p"</span>, <span class="str">"720p"</span>, <span class="str">"1080p"</span>, <span class="str">"4k"</span>],
+  <span class="key">"thumbnail_url"</span>: <span class="url-color">"https://cdn.yt.com/vid_8xKp2mNqRs/thumb.jpg"</span>
+}</pre>
+
+      <div class="callout"><strong>Design note:</strong> The client receives the manifest URL from the CDN. The actual video bytes are never served by the application server — only metadata is. CDN serves everything heavy.</div>
+    </div>
+  </div>
+
+  <!-- ENDPOINT 3 - MANIFEST -->
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">cdn.yt.com/:video_id/manifest.m3u8</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="endpoint-desc">The HLS master manifest file. Client fetches this from CDN — it lists all available quality levels. This is what enables adaptive bitrate streaming.</div>
+
+      <div class="code-label">RESPONSE — HLS Master Manifest (.m3u8)</div>
+      <pre><span class="cmt">#EXTM3U</span>
+<span class="cmt">#EXT-X-VERSION:3</span>
+
+<span class="cmt"># 240p — Mobile / slow connection</span>
+<span class="kw">#EXT-X-STREAM-INF:</span>BANDWIDTH=400000,RESOLUTION=426x240,CODECS="avc1.42e00a"
+<span class="url-color">240p/playlist.m3u8</span>
+
+<span class="cmt"># 480p — Standard quality</span>
+<span class="kw">#EXT-X-STREAM-INF:</span>BANDWIDTH=1200000,RESOLUTION=854x480,CODECS="avc1.42e01e"
+<span class="url-color">480p/playlist.m3u8</span>
+
+<span class="cmt"># 720p — HD quality</span>
+<span class="kw">#EXT-X-STREAM-INF:</span>BANDWIDTH=2500000,RESOLUTION=1280x720,CODECS="avc1.4d401f"
+<span class="url-color">720p/playlist.m3u8</span>
+
+<span class="cmt"># 1080p — Full HD</span>
+<span class="kw">#EXT-X-STREAM-INF:</span>BANDWIDTH=5000000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+<span class="url-color">1080p/playlist.m3u8</span>
+
+<span class="cmt"># 4K — Ultra HD (YouTube Premium)</span>
+<span class="kw">#EXT-X-STREAM-INF:</span>BANDWIDTH=15000000,RESOLUTION=3840x2160,CODECS="av01.0.13M.08"
+<span class="url-color">4k/playlist.m3u8</span></pre>
+    </div>
+  </div>
+
+  <!-- ENDPOINT 4 - SEGMENTS -->
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">cdn.yt.com/:video_id/720p/segment-042.ts</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="endpoint-desc">Individual video segment (4 seconds of video at 720p). The player downloads these one-by-one, ahead of playback. A 1-hour video has ~900 segments per resolution.</div>
+
+      <div class="code-label">REQUEST HEADERS</div>
+      <pre><span class="kw">GET</span> /vid_8xKp2mNqRs/720p/segment-042.ts
+<span class="kw">Range:</span> <span class="str">bytes=0-1048576</span>   <span class="cmt">// Optional: range request for partial fetch</span>
+<span class="kw">Accept-Encoding:</span> <span class="str">gzip, deflate</span></pre>
+
+      <div class="code-label">RESPONSE HEADERS</div>
+      <pre><span class="kw">HTTP/1.1</span> 200 OK
+<span class="kw">Content-Type:</span> <span class="str">video/MP2T</span>
+<span class="kw">Content-Length:</span> <span class="num">2457600</span>
+<span class="kw">Cache-Control:</span> <span class="str">public, max-age=86400</span>
+<span class="kw">X-Cache:</span> <span class="str">Hit from CDN Edge (Frankfurt)</span>
+<span class="kw">CF-Ray:</span> <span class="str">7f3c8e2bd9a04b2c-FRA</span></pre>
+    </div>
+  </div>
+
+  <!-- ENDPOINT 5 -->
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="badge badge-post">POST</span>
+      <span class="endpoint-path">/v1/videos/:video_id/progress</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="endpoint-desc">Update playback position. Fire-and-forget — no need to await confirmation. Handles millions of writes/second. Stored in DynamoDB for high throughput.</div>
+
+      <div class="code-label">REQUEST</div>
+      <pre><span class="kw">POST</span> /v1/videos/vid_8xKp2mNqRs/progress
+<span class="kw">Authorization:</span> <span class="str">Bearer eyJhbGci...</span>
+
+{
+  <span class="key">"position_seconds"</span>: <span class="num">427</span>,
+  <span class="key">"duration_watched"</span>: <span class="num">60</span>,
+  <span class="key">"quality"</span>: <span class="str">"720p"</span>,
+  <span class="key">"device"</span>: <span class="str">"mobile"</span>,
+  <span class="key">"buffering_events"</span>: <span class="num">0</span>
+}</pre>
+
+      <div class="code-label">RESPONSE — 202 Accepted</div>
+      <pre>{
+  <span class="key">"status"</span>: <span class="str">"accepted"</span>
+}
+<span class="cmt">// No confirmation needed. Fire and forget.</span></pre>
+    </div>
+  </div>
+
+  <!-- ENDPOINT 6 -->
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="badge badge-get">GET</span>
+      <span class="endpoint-path">/v1/search?q=system+design&amp;count=10&amp;cursor=abc</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="endpoint-desc">Search for videos using cursor-based pagination. Much more efficient than offset-based at scale — no "skip 10 million rows" problem.</div>
+
+      <div class="code-label">REQUEST</div>
+      <pre><span class="kw">GET</span> /v1/search?q=system+design&amp;count=10&amp;cursor=eyJpZCI6InZpZF8xMjMifQ
+<span class="kw">Authorization:</span> <span class="str">Bearer eyJhbGci...</span></pre>
+
+      <div class="code-label">RESPONSE — 200 OK</div>
+      <pre>{
+  <span class="key">"results"</span>: [
+    {
+      <span class="key">"video_id"</span>: <span class="str">"vid_9xKp2mNqRs"</span>,
+      <span class="key">"title"</span>: <span class="str">"System Design Interview Prep"</span>,
+      <span class="key">"channel"</span>: <span class="str">"Neo Kim"</span>,
+      <span class="key">"view_count"</span>: <span class="num">485920</span>,
+      <span class="key">"duration_seconds"</span>: <span class="num">2340</span>,
+      <span class="key">"thumbnail"</span>: <span class="url-color">"https://cdn.yt.com/vid_9xKp2mNqRs/thumb.jpg"</span>
+    }
+  ],
+  <span class="key">"next_cursor"</span>: <span class="str">"eyJpZCI6InZpZF85OTkifQ"</span>,  <span class="cmt">// Base64 encoded cursor</span>
+  <span class="key">"has_more"</span>: <span class="kw">true</span>
+}</pre>
+
+      <div class="callout"><strong>Why cursor-based?</strong> With offset pagination <code>?offset=10000000</code>, the DB must skip 10M rows — slow and expensive. Cursor-based pagination jumps directly to the right position using an indexed ID. YouTube uses this.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 6: TRANSCODING -->
+<section id="transcoding">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2 class="section-title">Transcoding Pipeline</h2>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Upload Complete → S3 Event Fired</div>
+        <div class="step-desc">When the raw video lands in S3, an event is published to Kafka topic <code>video_uploads</code>. The upload service is done — its job is complete.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Kafka Queue — 256 Partitions <span style="font-size:10px; color:var(--accent); font-weight:normal;">[generic — real YouTube uses Google Pub/Sub]</span></div>
+        <div class="step-desc">Partition key = <code>video_id % 256</code>. This ensures the same video always goes to the same partition — guaranteeing ordering and preventing double-processing.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">5,000 Transcoding Workers Pull from Queue</div>
+        <div class="step-desc">Workers distributed across data centers. Each has 8 CPUs, 32GB RAM, 500GB SSD scratch space. Consumer group: <code>transcoding_workers</code>.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">FFmpeg Transcodes to 6 Resolutions in Parallel <span style="font-size:10px; color:var(--accent); font-weight:normal;">[generic — real YouTube uses custom VCU hardware + VP9/AV1]</span></div>
+        <div class="step-desc">240p, 480p, 720p, 1080p, 2K, 4K. Each is split into 4-second segments (industry standard for VOD). Real YouTube uses VP9 and AV1 codecs.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Segments Uploaded to S3 + CDN Pushed</div>
+        <div class="step-desc">Path: <code>s3://yt-processed/{video_id}/{resolution}/segment-{n}.ts</code></div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Database Updated → Status = 'ready'</div>
+        <div class="step-desc">Metadata saved, manifest generated, Redis cache invalidated. Video becomes searchable and streamable.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:28px">
+    <div class="card-title" style="font-size:14px; color:var(--accent); margin-bottom:16px; font-family:'Syne',sans-serif; font-weight:700;">⚠️ Failure Handling — Retry Strategy</div>
+    <table>
+      <tr><th>Attempt</th><th>Delay</th><th>Action</th></tr>
+      <tr><td>1</td><td class="td-green">Immediate</td><td>Execute normally</td></tr>
+      <tr><td>2</td><td class="td-accent">5 min</td><td>Retry with backoff</td></tr>
+      <tr><td>3</td><td class="td-accent">15 min</td><td>Retry</td></tr>
+      <tr><td>4</td><td class="td-red">45 min</td><td>Retry</td></tr>
+      <tr><td>5</td><td class="td-red">2 hours</td><td>Max retry — alert on-call</td></tr>
+      <tr><td>Final</td><td class="td-red">—</td><td>Status = 'failed', notify user</td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 7: STREAMING -->
+<section id="streaming">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2 class="section-title">Adaptive Bitrate Streaming (HLS / DASH)</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Key concept:</strong> YouTube uses BOTH HLS and DASH. HLS (.m3u8) for Apple devices and Safari. DASH (.mpd) for Android and Chrome. Both work by splitting video into small segments and letting the player switch quality levels on the fly.
+  </div>
+
+  <div class="grid-2" style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🍎</div>HLS — HTTP Live Streaming</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2.2;">
+        <li>Created by Apple in 2009</li>
+        <li>Manifest file: <code>.m3u8</code> (plaintext)</li>
+        <li>Segments: <code>.ts</code> files (2-6 sec each)</li>
+        <li>Native on iOS, macOS, Safari</li>
+        <li>Supports LL-HLS (2-3 sec latency)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">🤖</div>DASH — Dynamic Adaptive</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2.2;">
+        <li>Open standard by MPEG (2012)</li>
+        <li>Manifest file: <code>.mpd</code> (XML)</li>
+        <li>Supports VP9 and AV1 codecs</li>
+        <li>Native on Android, Chrome</li>
+        <li>Used by YouTube on non-Apple devices</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top:28px">
+    <div class="card-title" style="font-family:'Syne',sans-serif; font-weight:700; font-size:15px; margin-bottom:16px;">How Adaptive Bitrate Works — Step by Step</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Player fetches master manifest from CDN</div>
+          <div class="step-desc">Gets list of all available resolutions and their bandwidths (240p = 400kbps, 4K = 15Mbps)</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Player measures available bandwidth</div>
+          <div class="step-desc">Downloads a test segment, measures download time, estimates available bandwidth</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Player selects matching quality rendition</div>
+          <div class="step-desc">If bandwidth = 3Mbps → selects 720p. Fetches that rendition's playlist file.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Player downloads segments ahead of time</div>
+          <div class="step-desc">Typically buffers 15-30 seconds ahead. If network drops, switches to lower quality immediately.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Quality switches happen at segment boundaries</div>
+          <div class="step-desc">Every 4 seconds the player can switch quality — seamlessly and without rebuffering.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 8: DATABASE -->
+<section id="database">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2 class="section-title">Database Architecture & Sharding</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Real YouTube fact:</strong> YouTube uses <strong>Vitess</strong> — a sharding middleware on top of <strong>MySQL</strong> (not PostgreSQL!). It was built by YouTube engineers and open-sourced. It handles horizontal sharding transparently, so app code still writes SQL queries. <em style="color:var(--accent)">In this guide we use PostgreSQL syntax for clarity, but the real YouTube runs sharded MySQL.</em>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title"><div class="icon">🗄️</div>Why Shard by video_id?</div>
+    <div class="grid-2" style="gap:12px">
+      <div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:8px;">✅ <strong style="color:var(--green)">Why it works</strong></p>
+        <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+          <li>Videos are append-only (no updates)</li>
+          <li>Every query knows video_id</li>
+          <li>Even distribution (UUID hash)</li>
+          <li>No hot shards from viral videos</li>
+          <li>Co-location: segments live on same shard</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:8px;">❌ <strong style="color:var(--primary)">Why NOT user_id</strong></p>
+        <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+          <li>Popular creators = hot shard problem</li>
+          <li>"Get all videos by user" = scan ALL shards</li>
+          <li>Scatter-gather is expensive</li>
+          <li>Uneven distribution</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="code-label">SHARDING FORMULA</div>
+    <pre><span class="cmt">// Consistent hash to determine which shard</span>
+shard_number = CRC32(video_id) % <span class="num">256</span>
+
+<span class="cmt">// Example</span>
+video_id = <span class="str">"vid_8xKp2mNqRs"</span>
+crc32(video_id) = <span class="num">0x1F4A8B2C</span>
+shard = <span class="num">0x1F4A8B2C</span> % <span class="num">256</span> = <span class="num">44</span>
+
+<span class="cmt">// This video lives on shard_044</span>
+<span class="cmt">// DB connection string: mysql://shard044.yt.internal:3306/videos</span></pre>
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="code-label">DATABASE SCHEMA — KEY TABLES</div>
+    <pre><span class="cmt">-- Sharded by video_id (256 shards)</span>
+<span class="kw">CREATE TABLE</span> videos (
+  video_id    VARCHAR(20)  <span class="kw">PRIMARY KEY</span>,        <span class="cmt">-- Shard key</span>
+  uploader_id VARCHAR(20)  <span class="kw">NOT NULL</span>,
+  title       VARCHAR(255) <span class="kw">NOT NULL</span>,
+  status      ENUM(<span class="str">'uploading'</span>, <span class="str">'transcoding'</span>, <span class="str">'ready'</span>, <span class="str">'failed'</span>),
+  created_at  TIMESTAMP    <span class="kw">DEFAULT</span> CURRENT_TIMESTAMP,
+  <span class="kw">INDEX</span> (uploader_id, created_at),   <span class="cmt">-- User's videos timeline</span>
+  <span class="kw">INDEX</span> (status, created_at)         <span class="cmt">-- Filter by processing status</span>
+);
+
+<span class="cmt">-- Co-located with videos table (same shard!)</span>
+<span class="kw">CREATE TABLE</span> video_segments (
+  segment_id  VARCHAR(36)  <span class="kw">PRIMARY KEY</span>,
+  video_id    VARCHAR(20)  <span class="kw">NOT NULL</span>,             <span class="cmt">-- Same shard as videos</span>
+  resolution  ENUM(<span class="str">'240p'</span>, <span class="str">'480p'</span>, <span class="str">'720p'</span>, <span class="str">'1080p'</span>, <span class="str">'4k'</span>),
+  segment_num INT          <span class="kw">NOT NULL</span>,
+  s3_path     VARCHAR(512) <span class="kw">NOT NULL</span>,             <span class="cmt">-- s3://bucket/vid/.../seg-001.ts</span>
+  <span class="kw">UNIQUE</span> (video_id, resolution, segment_num)  <span class="cmt">-- Idempotency!</span>
+);
+
+<span class="cmt">-- Separate shard group (sharded by user_id)</span>
+<span class="kw">CREATE TABLE</span> users (
+  user_id     VARCHAR(20)  <span class="kw">PRIMARY KEY</span>,
+  username    VARCHAR(255) <span class="kw">UNIQUE NOT NULL</span>,
+  email       VARCHAR(255) <span class="kw">UNIQUE NOT NULL</span>,
+  plan        ENUM(<span class="str">'free'</span>, <span class="str">'premium'</span>, <span class="str">'pro'</span>)
+);</pre>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 9: CACHING -->
+<section id="caching">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2 class="section-title">Caching Strategy — 3 Layers</h2>
+  </div>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Layer 1: CDN Edge Cache — Terabytes globally</div>
+        <div class="step-desc">Video segments + manifest files cached at 3,000+ edge locations. TTL = 24 hours. Top 1% of videos get 95% hit rate. Saves billions of origin requests per day.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Layer 2: Redis Cluster — Metadata Cache</div>
+        <div class="step-desc">Video metadata, manifests, user profiles, trending lists. TTL = 1 hour. Write-through pattern: update Redis on every DB write. 256 nodes with consistent hashing.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Layer 3: Client-Side Cache — Device Storage</div>
+        <div class="step-desc">Downloaded segments stored on device. Enables offline playback, instant replay. Last ~1GB of watched content cached locally (configurable).</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="code-label">REDIS KEY PATTERNS</div>
+    <pre><span class="cmt">// Video metadata — expires 1 hour</span>
+video:<span class="str">vid_8xKp2mNqRs</span>:meta    → { title, duration, view_count, likes }
+video:<span class="str">vid_8xKp2mNqRs</span>:hls     → { manifest_content }
+
+<span class="cmt">// User data — expires 24 hours</span>
+user:<span class="str">usr_4kNpRmQs</span>:profile   → { name, plan, storage_used }
+
+<span class="cmt">// Trending — recomputed every 5 minutes</span>
+trending:global:daily       → [ vid_001, vid_002, ..., vid_100 ]
+trending:US:weekly          → [ vid_005, vid_012, ... ]
+
+<span class="cmt">// Real-time view counter (not DB — Redis atomic increment)</span>
+views:<span class="str">vid_8xKp2mNqRs</span>        → <span class="num">1482930</span>   <span class="cmt">// INCR every view</span></pre>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 10: MULTI-REGION -->
+<section id="multiregion">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <h2 class="section-title">Multi-Region Deployment</h2>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:24px">
+    <div class="card" style="border-color:rgba(255,71,87,0.3)">
+      <div class="card-title" style="color:var(--primary)">US-EAST</div>
+      <p style="font-size:13px; color:var(--muted)">Primary write region. All writes go here first. Single source of truth.</p>
+      <div class="tags"><span class="tag">PRIMARY</span><span class="tag">Writes</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">US-WEST / EU</div>
+      <p style="font-size:13px; color:var(--muted)">Read replicas. Lag &lt;150ms from US-EAST. Handle reads locally.</p>
+      <div class="tags"><span class="tag">REPLICA</span><span class="tag">Reads</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">APAC (SG + SYD)</div>
+      <p style="font-size:13px; color:var(--muted)">Read replicas. Lag ~250-300ms. Transcoding workers for local uploads.</p>
+      <div class="tags"><span class="tag">REPLICA</span><span class="tag">Transcoding</span></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Read-after-write consistency:</strong> When a user uploads a video in Singapore, they are redirected to read from the APAC replica after the write to US-EAST completes. This ensures they immediately see their own upload (250ms lag) while other users get eventual consistency.
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 11: TRADE-OFFS -->
+<section id="tradeoffs">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">11</span>
+    <h2 class="section-title">Architectural Trade-offs</h2>
+  </div>
+
+  <div class="tradeoff">
+    <div class="tradeoff-title">⚖️ Eventual Consistency vs Strong Consistency</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;"><strong style="color:var(--text)">Choice made:</strong> Eventual consistency for video metadata</p>
+    <div class="tradeoff-row">
+      <div class="pros">
+        <div class="pros-title">✅ Why Eventual</div>
+        <ul>
+          <li>Higher availability (read from any replica)</li>
+          <li>Faster responses globally</li>
+          <li>Scale to 2.5B users</li>
+          <li>60-300ms lag is fine for video</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-title">❌ Costs</div>
+        <ul>
+          <li>Users may see stale view counts</li>
+          <li>New uploads delay 60-300ms</li>
+          <li>Complex cache invalidation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tradeoff">
+    <div class="tradeoff-title">⚖️ Pre-generate All Resolutions vs On-demand</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;"><strong style="color:var(--text)">Choice made:</strong> Pre-generate all 6 resolutions</p>
+    <div class="tradeoff-row">
+      <div class="pros">
+        <div class="pros-title">✅ Why Pre-generate</div>
+        <ul>
+          <li>Zero wait for any quality level</li>
+          <li>Predictable latency for 4K viewers</li>
+          <li>Simpler CDN caching</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-title">❌ Costs</div>
+        <ul>
+          <li>6× storage cost</li>
+          <li>6× transcoding time</li>
+          <li>Most 4K is never watched</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tradeoff">
+    <div class="tradeoff-title">⚖️ Async Transcoding vs Sync Transcoding</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;"><strong style="color:var(--text)">Choice made:</strong> Async (10-30 min delay)</p>
+    <div class="tradeoff-row">
+      <div class="pros">
+        <div class="pros-title">✅ Why Async</div>
+        <ul>
+          <li>Upload completes immediately</li>
+          <li>Transcoding scales independently</li>
+          <li>Kafka enables automatic retries</li>
+          <li>Batch during off-peak hours</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-title">❌ Costs</div>
+        <ul>
+          <li>Video not immediately watchable</li>
+          <li>More operational complexity</li>
+          <li>Must monitor queue depth</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tradeoff">
+    <div class="tradeoff-title">⚖️ S3 vs Custom Storage</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:16px;"><strong style="color:var(--text)">Real YouTube uses Colossus (Google's internal storage)</strong></p>
+    <div class="tradeoff-row">
+      <div class="pros">
+        <div class="pros-title">✅ Why S3 (for most)</div>
+        <ul>
+          <li>Zero operational overhead</li>
+          <li>11 nines durability built-in</li>
+          <li>No engineering needed</li>
+        </ul>
+      </div>
+      <div class="cons">
+        <div class="cons-title">❌ Costs</div>
+        <ul>
+          <li>$0.085/GB egress = expensive at scale</li>
+          <li>Vendor lock-in</li>
+          <li>YouTube saves $100M+/yr with Colossus</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 12: TIPS -->
+<section id="tips">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">12</span>
+    <h2 class="section-title">Interview Tips & Talking Points</h2>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title" style="color:var(--green)">✅ DO — Say These Things</div>
+      <ul style="color:var(--muted); font-size:13px; line-height:2.2; padding-left:16px;">
+        <li>"Read-heavy (100:1) so I'll optimize for reads"</li>
+        <li>"Pre-signed URLs bypass app servers entirely"</li>
+        <li>"Shard by video_id for natural co-location"</li>
+        <li>"Kafka gives us ordering + automatic retries"</li>
+        <li>"Eventual consistency is fine for video metadata"</li>
+        <li>"CDN achieves 95% hit rate for popular content"</li>
+        <li>"HLS for Apple devices, DASH for Android"</li>
+        <li>"YouTube uses Vitess to shard MySQL"</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--primary)">❌ DON'T — Avoid These</div>
+      <ul style="color:var(--muted); font-size:13px; line-height:2.2; padding-left:16px;">
+        <li>Don't shard by user_id (hot shard problem)</li>
+        <li>Don't serve video bytes from app servers</li>
+        <li>Don't use synchronous transcoding</li>
+        <li>Don't ignore the 256GB file constraint</li>
+        <li>Don't use offset pagination for search</li>
+        <li>Don't promise strong consistency everywhere</li>
+        <li>Don't forget failure scenarios</li>
+        <li>Don't skip capacity calculations</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-title"><div class="icon">⏱️</div>45-Minute Interview Flow</div>
+    <table>
+      <tr><th>Time</th><th>Topic</th><th>What to Cover</th></tr>
+      <tr><td class="td-accent">0–5 min</td><td>Clarifying Questions</td><td>Scale, formats, latency, consistency</td></tr>
+      <tr><td class="td-accent">5–15 min</td><td>High-Level Architecture</td><td>Components, upload vs streaming flows</td></tr>
+      <tr><td class="td-accent">15–30 min</td><td>Deep Dives</td><td>Sharding by video_id, Kafka pipeline, DB schema</td></tr>
+      <tr><td class="td-accent">30–40 min</td><td>Scale & Optimization</td><td>Multi-region, caching, cost optimization</td></tr>
+      <tr><td class="td-accent">40–45 min</td><td>Trade-offs</td><td>Eventual consistency, async transcoding, S3 vs custom</td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+<hr class="divider">
+
+<hr class="divider">
+
+<!-- SECTION 13: REAL PRODUCTION ARCHITECTURE -->
+<section id="buildfromscratch">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">13</span>
+    <h2 class="section-title">Как бих го построил — Реална Архитектура</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Подход:</strong> Разглеждаме архитектурата layer по layer — от клиента до базата данни. За всеки слой: какво изграждаме, защо точно това, и какви са алтернативите.
+  </div>
+
+  <!-- LAYER 1: CLIENT -->
+  <div style="margin-top:36px">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+      <div style="background:rgba(46,213,115,0.15); border:1px solid rgba(46,213,115,0.3); color:var(--green); font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;">LAYER 1</div>
+      <h3 style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">Client Layer</h3>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">🌐</div>Какво изграждаме</div>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">React SPA с Video.js player. Клиентът управлява:</p>
+        <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2.2;">
+          <li>Upload flow (chunked multipart)</li>
+          <li>HLS/DASH adaptive player</li>
+          <li>Watch progress tracking</li>
+          <li>Search + pagination</li>
+          <li>Auth (JWT в memory, refresh token в HttpOnly cookie)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="icon">⚡</div>Критично: Chunked Upload</div>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">256GB файл не може да се качи наведнъж. Разбиваме на chunks:</p>
+        <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Client-side chunking</span>
+<span class="kw">const</span> CHUNK_SIZE = <span class="num">10</span> * <span class="num">1024</span> * <span class="num">1024</span>; <span class="cmt">// 10MB</span>
+
+<span class="kw">async function</span> uploadInChunks(file, uploadUrl) {
+  <span class="kw">const</span> totalChunks = Math.ceil(
+    file.size / CHUNK_SIZE
+  );
+
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i < totalChunks; i++) {
+    <span class="kw">const</span> chunk = file.slice(
+      i * CHUNK_SIZE,
+      (i + <span class="num">1</span>) * CHUNK_SIZE
+    );
+    <span class="kw">await</span> uploadChunk(uploadUrl, chunk, i);
+    <span class="cmt">// Save progress → resume on failure</span>
+    localStorage.setItem(
+      <span class="str">`upload_${videoId}_progress`</span>, i
+    );
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 2: CDN -->
+  <div style="margin-top:40px">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+      <div style="background:rgba(255,165,2,0.15); border:1px solid rgba(255,165,2,0.3); color:var(--accent); font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;">LAYER 2</div>
+      <h3 style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">CDN Layer — Видеото никога не стига до origin</h3>
+    </div>
+
+    <div class="callout" style="background:rgba(255,165,2,0.05); border-left-color:var(--accent); border-color:rgba(255,165,2,0.2)">
+      <strong style="color:var(--accent)">Ключово правило:</strong> 95%+ от видео трафика трябва да се обслужва от CDN edge node. Origin сървърите обслужват само cache misses. Ако origin-ът е под натиск от видео трафик — нещо е сбъркано.
+    </div>
+
+    <div class="grid-2" style="margin-top:20px">
+      <div class="card">
+        <div class="card-title"><div class="icon">🌍</div>CDN Cache Strategy</div>
+        <table style="margin:0">
+          <tr><th>Съдържание</th><th>TTL</th><th>Защо</th></tr>
+          <tr><td>Video segments (.ts)</td><td class="td-green">∞ (immutable)</td><td style="font-size:12px;color:var(--muted)">Никога не се променят</td></tr>
+          <tr><td>Master manifest (.m3u8)</td><td class="td-accent">5 min</td><td style="font-size:12px;color:var(--muted)">Може да се добавят резолюции</td></tr>
+          <tr><td>Thumbnails</td><td class="td-green">24h</td><td style="font-size:12px;color:var(--muted)">Рядко се сменят</td></tr>
+          <tr><td>Metadata (title, views)</td><td class="td-red">No cache</td><td style="font-size:12px;color:var(--muted)">Динамично — минава през API</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="icon">📦</div>Segment Naming Strategy</div>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:12px;">Видео сегментите са <strong style="color:var(--text)">immutable</strong> — съдържанието никога не се променя след транскодиране. Затова CDN TTL = ∞:</p>
+        <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Content-addressable path</span>
+<span class="url-color">cdn.yt.com</span>/<span class="str">vid_8xKp2mNqRs</span>/<span class="str">720p</span>/
+  segment-000.ts  <span class="cmt">← immutable</span>
+  segment-001.ts  <span class="cmt">← immutable</span>
+  ...
+  segment-899.ts  <span class="cmt">← immutable</span>
+  playlist.m3u8   <span class="cmt">← 5 min TTL</span>
+  
+<span class="cmt">// Cache-Control header за segments:</span>
+Cache-Control: <span class="str">public, max-age=31536000</span>
+<span class="cmt">// = 1 година! Никога не expire-ват</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 3: API GATEWAY -->
+  <div style="margin-top:40px">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+      <div style="background:rgba(83,82,237,0.15); border:1px solid rgba(83,82,237,0.3); color:#7b7cf7; font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;">LAYER 3</div>
+      <h3 style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">API Gateway + Load Balancer</h3>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">🚪</div>Отговорности на Gateway</div>
+        <div class="flow">
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-title">SSL Termination</div>
+              <div class="step-desc">HTTPS → HTTP вътрешно. Сертификатите се управляват само тук.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-title">Auth Validation</div>
+              <div class="step-desc">Валидира JWT token. Декодира user_id и го добавя в header-а към downstream сервизите.</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-title">Rate Limiting</div>
+              <div class="step-desc">Free tier: 100 req/min. Premium: 1000 req/min. Stored in Redis (sliding window).</div>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+              <div class="step-title">Request Routing</div>
+              <div class="step-desc">/v1/videos/* → Upload Service. /v1/search/* → Search Service. Routing по path.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="icon">⚖️</div>Rate Limiting имплементация</div>
+        <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Sliding window rate limiter</span>
+<span class="cmt">// Redis Sorted Set — O(log N)</span>
+
+<span class="kw">async function</span> checkRateLimit(userId) {
+  <span class="kw">const</span> key = <span class="str">`rate:<span class="kw">${userId}</span>`</span>;
+  <span class="kw">const</span> now = Date.now();
+  <span class="kw">const</span> window = <span class="num">60000</span>; <span class="cmt">// 1 минута</span>
+  <span class="kw">const</span> limit = <span class="num">100</span>;  <span class="cmt">// free tier</span>
+
+  <span class="kw">await</span> redis.zremrangebyscore(
+    key, <span class="num">0</span>, now - window  <span class="cmt">// Изтрий старите</span>
+  );
+
+  <span class="kw">const</span> count = <span class="kw">await</span> redis.zcard(key);
+
+  <span class="kw">if</span> (count >= limit) {
+    <span class="kw">throw new</span> Error(<span class="str">'Rate limit exceeded'</span>);
+  }
+
+  <span class="kw">await</span> redis.zadd(key, now, now);
+  <span class="kw">await</span> redis.expire(key, <span class="num">60</span>);
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 4: MICROSERVICES -->
+  <div style="margin-top:40px">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+      <div style="background:rgba(255,71,87,0.15); border:1px solid rgba(255,71,87,0.3); color:var(--primary); font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;">LAYER 4</div>
+      <h3 style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">Microservices Layer</h3>
+    </div>
+
+    <div class="callout">
+      <strong>Защо микросервизи?</strong> Upload Service трябва 200 инстанции при пик. Search Service трябва 20. Transcoding Workers трябва 5000. Ако всичко е в един монолит — или разхищаваме ресурси, или всичко е bottleneck.
+    </div>
+
+    <!-- Upload Service -->
+    <div style="margin-top:24px">
+      <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--accent); margin-bottom:14px;">📤 Upload Service</div>
+      <div class="grid-2">
+        <div class="card" style="padding:20px">
+          <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Единствената отговорност: генерира pre-signed S3 URL и записва metadata. <strong style="color:var(--text)">Не докосва нито един байт видео.</strong></p>
+          <div class="flow">
+            <div class="flow-step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Validate request</div>
+                <div class="step-desc">File size ≤ 256GB, content-type video/*, user has storage quota</div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Generate video_id + pre-signed URL</div>
+                <div class="step-desc">S3 URL expires в 1 час. Клиентът качва директно.</div>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">S3 Event → Kafka</div>
+                <div class="step-desc">Когато клиентът финишира upload-а, S3 пуска event → Kafka topic video_uploads.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:20px">
+          <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Upload Service — POST /v1/videos</span>
+app.post(<span class="str">'/v1/videos'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> { title, fileSize, contentType } = req.body;
+  <span class="kw">const</span> userId = req.headers[<span class="str">'x-user-id'</span>]; <span class="cmt">// от Gateway</span>
+
+  <span class="cmt">// 1. Check storage quota</span>
+  <span class="kw">const</span> user = <span class="kw">await</span> db.getUser(userId);
+  <span class="kw">if</span> (user.storageUsed + fileSize > user.quota) {
+    <span class="kw">return</span> res.status(<span class="num">413</span>).json({
+      error: <span class="str">'Storage quota exceeded'</span>
+    });
+  }
+
+  <span class="cmt">// 2. Generate pre-signed S3 URL</span>
+  <span class="kw">const</span> videoId = nanoid(<span class="num">12</span>);
+  <span class="kw">const</span> uploadUrl = <span class="kw">await</span> s3.presign({
+    bucket: <span class="str">'yt-raw'</span>,
+    key: <span class="str">`raw/<span class="kw">${videoId}</span>`</span>,
+    expires: <span class="num">3600</span>,
+    contentType,
+    maxSize: fileSize
+  });
+
+  <span class="cmt">// 3. Save to DB — status: 'uploading'</span>
+  <span class="kw">await</span> db.insertVideo({
+    id: videoId, title,
+    uploaderId: userId,
+    status: <span class="str">'uploading'</span>
+  });
+
+  res.status(<span class="num">201</span>).json({ videoId, uploadUrl });
+});</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transcoding Service -->
+    <div style="margin-top:32px">
+      <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--accent); margin-bottom:14px;">🎬 Transcoding Service</div>
+      <div class="grid-2">
+        <div class="card" style="padding:20px">
+          <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">5,000 worker инстанции. Всяка дърпа job от Kafka, транскодира, качва сегментите в S3.</p>
+          <div class="arch" style="font-size:11px; line-height:1.9; padding:16px;">
+Kafka Partition (video_id % 256)
+         │
+         ▼
+┌─────────────────────┐
+│  Transcoding Worker  │
+│                      │
+│ 1. Download from S3  │
+│ 2. FFmpeg → 6 res.   │
+│ 3. Segment to 4s .ts │
+│ 4. Upload to S3      │
+│ 5. Generate manifest │
+│ 6. Update DB         │
+│ 7. Invalidate CDN    │
+└─────────────────────┘
+          </div>
+          <div class="callout" style="font-size:12px; margin-top:12px;">
+            <strong>Idempotency:</strong> Ако worker-ът crash-не и job-ът се преиграе — проверяваме дали сегментите вече са в S3 преди да транскодираме отново.
+          </div>
+        </div>
+        <div class="card" style="padding:20px">
+          <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Worker — процесира един job</span>
+<span class="kw">async function</span> processTranscodeJob(job) {
+  <span class="kw">const</span> { videoId, s3RawKey } = job;
+
+  <span class="cmt">// Idempotency check</span>
+  <span class="kw">const</span> exists = <span class="kw">await</span> s3.exists(
+    <span class="str">`<span class="kw">${videoId}</span>/720p/segment-000.ts`</span>
+  );
+  <span class="kw">if</span> (exists) <span class="kw">return</span>; <span class="cmt">// вече направено!</span>
+
+  <span class="cmt">// Download raw video</span>
+  <span class="kw">await</span> s3.download(s3RawKey, <span class="str">`/tmp/<span class="kw">${videoId}</span>`</span>);
+
+  <span class="cmt">// Transcode all resolutions IN PARALLEL</span>
+  <span class="kw">await</span> Promise.all(RESOLUTIONS.map(r =>
+    transcodeToHLS(videoId, r.name, r.size, r.bitrate)
+  ));
+
+  <span class="cmt">// Generate master manifest</span>
+  <span class="kw">const</span> manifest = buildMasterManifest(videoId);
+  <span class="kw">await</span> s3.put(
+    <span class="str">`<span class="kw">${videoId}</span>/manifest.m3u8`</span>, manifest,
+    { cacheControl: <span class="str">'public, max-age=300'</span> }
+  );
+
+  <span class="cmt">// Update DB + Invalidate CDN cache</span>
+  <span class="kw">await</span> db.setVideoReady(videoId);
+  <span class="kw">await</span> cdn.invalidate(<span class="str">`/<span class="kw">${videoId}</span>/manifest.m3u8`</span>);
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Streaming Service -->
+    <div style="margin-top:32px">
+      <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--accent); margin-bottom:14px;">▶️ Streaming Service</div>
+      <div class="grid-2">
+        <div class="card" style="padding:20px">
+          <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">Отговаря само за metadata + manifest URL. <strong style="color:var(--text)">Никога не стриймва видео байтове директно.</strong></p>
+          <table style="margin:0">
+            <tr><th>Request</th><th>Обработка</th></tr>
+            <tr><td style="font-size:12px">GET /v1/videos/:id</td><td style="font-size:12px; color:var(--muted)">Redis hit → DB fallback</td></tr>
+            <tr><td style="font-size:12px">Manifest URL</td><td style="font-size:12px; color:var(--muted)">CDN URL (не origin)</td></tr>
+            <tr><td style="font-size:12px">Segments</td><td style="font-size:12px; color:var(--muted)">CDN директно</td></tr>
+            <tr><td style="font-size:12px">Progress</td><td style="font-size:12px; color:var(--muted)">DynamoDB (high write)</td></tr>
+          </table>
+        </div>
+        <div class="card" style="padding:20px">
+          <pre style="margin:0; font-size:11px;">
+<span class="cmt">// GET /v1/videos/:id — Cache-first</span>
+app.get(<span class="str">'/v1/videos/:id'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> { id } = req.params;
+
+  <span class="cmt">// 1. Try Redis cache first</span>
+  <span class="kw">let</span> video = <span class="kw">await</span> redis.get(<span class="str">`video:<span class="kw">${id}</span>`</span>);
+
+  <span class="cmt">// 2. Cache miss → hit DB</span>
+  <span class="kw">if</span> (!video) {
+    video = <span class="kw">await</span> db.getVideo(id);
+    <span class="kw">await</span> redis.setex(
+      <span class="str">`video:<span class="kw">${id}</span>`</span>, <span class="num">3600</span>,
+      JSON.stringify(video)
+    );
+  }
+
+  <span class="cmt">// 3. Return metadata + CDN manifest URL</span>
+  res.json({
+    ...video,
+    manifestUrl: {
+      hls:  <span class="str">`https://cdn.yt.com/<span class="kw">${id}</span>/manifest.m3u8`</span>,
+      dash: <span class="str">`https://cdn.yt.com/<span class="kw">${id}</span>/manifest.mpd`</span>
+    }
+    <span class="cmt">// ↑ CDN URL — никога не минава през origin</span>
+  });
+});</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 5: STORAGE -->
+  <div style="margin-top:40px">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+      <div style="background:rgba(46,213,115,0.15); border:1px solid rgba(46,213,115,0.3); color:var(--green); font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;">LAYER 5</div>
+      <h3 style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700;">Storage Layer — S3 + Database + Redis</h3>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">🪣</div>S3 Bucket Structure</div>
+        <pre style="margin:0; font-size:11px;">
+<span class="cmt">// 3 отделни S3 bucket-а</span>
+
+<span class="str">yt-raw-videos</span>/           <span class="cmt">← временен</span>
+  raw/<span class="str">vid_8xKp2mNqRs</span>      <span class="cmt">← изтрива се след transcode</span>
+
+<span class="str">yt-processed-videos</span>/     <span class="cmt">← перманентен</span>
+  <span class="str">vid_8xKp2mNqRs</span>/
+    manifest.m3u8
+    manifest.mpd
+    240p/
+      playlist.m3u8
+      segment-000.ts ... segment-899.ts
+    720p/
+      playlist.m3u8
+      segment-000.ts ... segment-899.ts
+    1080p/
+      ...
+
+<span class="str">yt-thumbnails</span>/           <span class="cmt">← публичен</span>
+  <span class="str">vid_8xKp2mNqRs</span>/
+    thumb_default.jpg
+    thumb_hq.jpg</pre>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="icon">🗄️</div>Database Selection</div>
+        <table style="margin:0">
+          <tr><th>Data</th><th>Database</th><th>Защо</th></tr>
+          <tr>
+            <td style="font-size:12px">Video metadata</td>
+            <td style="font-size:12px" class="td-accent">PostgreSQL + Vitess</td>
+            <td style="font-size:12px; color:var(--muted)">ACID, joins, sharding</td>
+          </tr>
+          <tr>
+            <td style="font-size:12px">Watch progress</td>
+            <td style="font-size:12px" class="td-accent">DynamoDB</td>
+            <td style="font-size:12px; color:var(--muted)">High write throughput</td>
+          </tr>
+          <tr>
+            <td style="font-size:12px">Search index</td>
+            <td style="font-size:12px" class="td-accent">Elasticsearch</td>
+            <td style="font-size:12px; color:var(--muted)">Full-text search</td>
+          </tr>
+          <tr>
+            <td style="font-size:12px">Hot metadata</td>
+            <td style="font-size:12px" class="td-green">Redis</td>
+            <td style="font-size:12px; color:var(--muted)">Cache layer, &lt;1ms</td>
+          </tr>
+          <tr>
+            <td style="font-size:12px">View counters</td>
+            <td style="font-size:12px" class="td-green">Redis INCR</td>
+            <td style="font-size:12px; color:var(--muted)">Atomic, fast, batched</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- View Count -->
+    <div style="margin-top:20px">
+      <div class="card">
+        <div class="card-title"><div class="icon">👁️</div>View Count — Реален имплемент на $scale</div>
+        <div class="grid-2">
+          <div>
+            <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Проблем: 100M потребителя гледат едновременно. Не можем да пишем в DB за всеки view — ще го убием.</p>
+            <div class="flow">
+              <div class="flow-step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                  <div class="step-title">Redis INCR (real-time)</div>
+                  <div class="step-desc">Всеки view → INCR на Redis counter. Атомарно, &lt;1ms, безкрайно скалируемо.</div>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                  <div class="step-title">Batch flush (every 30s)</div>
+                  <div class="step-desc">Background job чете всички Redis counters и ги записва в DB наведнъж.</div>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                  <div class="step-title">DB като source of truth</div>
+                  <div class="step-desc">При Redis restart — load от DB. При показване — Redis (fast path).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <pre style="margin:0; font-size:11px; align-self:start;">
+<span class="cmt">// Всеки view hit</span>
+<span class="kw">async function</span> trackView(videoId) {
+  <span class="kw">await</span> redis.incr(<span class="str">`views:<span class="kw">${videoId}</span>`</span>);
+  <span class="cmt">// ← &lt;1ms, никога не блокира</span>
+}
+
+<span class="cmt">// Batch job — всеки 30 секунди</span>
+<span class="kw">async function</span> flushViewCounts() {
+  <span class="kw">const</span> keys = <span class="kw">await</span> redis.keys(<span class="str">'views:*'</span>);
+
+  <span class="kw">for</span> (<span class="kw">const</span> key <span class="kw">of</span> keys) {
+    <span class="kw">const</span> count = <span class="kw">await</span> redis.getdel(key);
+    <span class="kw">const</span> videoId = key.split(<span class="str">':'</span>)[<span class="num">1</span>];
+
+    <span class="cmt">// Atomic increment in DB</span>
+    <span class="kw">await</span> db.query(<span class="str">`
+      UPDATE videos
+      SET view_count = view_count + $1
+      WHERE id = $2
+    `</span>, [count, videoId]);
+  }
+}
+
+setInterval(flushViewCounts, <span class="num">30000</span>);</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL ARCHITECTURE DIAGRAM -->
+  <div style="margin-top:40px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">🗺️ Пълна Архитектурна Диаграма</div>
+    <div class="arch" style="font-size:11px; line-height:2; padding:28px;">
+                     ┌───────────────────────────────────────────┐
+                     │            CLIENTS                        │
+                     │   Web (React)  ·  iOS  ·  Android         │
+                     └──────────┬─────────────────┬─────────────┘
+                                │ API requests     │ Video segments
+                                ▼                  ▼
+               ┌────────────────────┐   ┌──────────────────────────┐
+               │   LOAD BALANCER    │   │   CDN EDGE NODES          │
+               │   (AWS ALB)        │   │   3,000+ locations        │
+               └────────┬───────────┘   │   Cache: segments + m3u8  │
+                        │               │   TTL: ∞ / 5min           │
+               ┌────────▼───────────┐   └──────────────────────────┘
+               │   API GATEWAY      │              ▲
+               │   Auth · Rate Limit│              │ push
+               │   SSL Termination  │   ┌──────────┴────────────────┐
+               └──┬──────┬──────┬───┘   │   S3 PROCESSED VIDEOS     │
+                  │      │      │        │   vid_id/720p/seg-000.ts  │
+          ┌───────▼┐ ┌───▼──┐ ┌▼──────┐ │   vid_id/manifest.m3u8   │
+          │UPLOAD  │ │STREAM│ │SEARCH │ └───────────────────────────┘
+          │SERVICE │ │SVC   │ │SVC    │              ▲
+          └───┬────┘ └──┬───┘ └───┬──┘              │ upload segments
+              │         │         │         ┌────────┴──────────────┐
+              │         │         │         │ TRANSCODING WORKERS   │
+              ▼         ▼         ▼         │  5,000 instances      │
+        ┌─────────────────────────────────┐ │  FFmpeg → HLS segs    │
+        │          REDIS CLUSTER          │ └────────────┬──────────┘
+        │  metadata cache · rate limits   │              │
+        │  view counters · sessions       │              ▲
+        └────────────────┬────────────────┘    ┌─────────────────┐
+                         │                     │  KAFKA QUEUE    │
+                         ▼                     │  256 partitions │
+        ┌────────────────────────────────────┐ │  topic: uploads │
+        │       POSTGRESQL + VITESS          │ └────────┬────────┘
+        │   256 shards · sharded by video_id │          │
+        │   1 primary · 2 replicas per shard │          ▲
+        └────────────────────────────────────┘ ┌────────┴────────┐
+                                                │   S3 RAW VIDS  │
+                                                │  (temp storage)│
+                                                └────────────────┘
+    </div>
+  </div>
+
+  <!-- UPLOAD FLOW -->
+  <div style="margin-top:40px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">🔄 Пълен Upload Flow (стъпка по стъпка)</div>
+    <table>
+      <tr><th>#</th><th>Стъпка</th><th>Компонент</th><th>Детайл</th></tr>
+      <tr><td class="td-green">1</td><td>POST /v1/videos</td><td>Upload Service</td><td style="color:var(--muted); font-size:12px;">Валидира quota, генерира video_id + pre-signed S3 URL</td></tr>
+      <tr><td class="td-green">2</td><td>Upload to S3</td><td>Client → S3 директно</td><td style="color:var(--muted); font-size:12px;">Multipart upload на chunks. App server не вижда нито байт.</td></tr>
+      <tr><td class="td-green">3</td><td>S3 Event fired</td><td>S3 → Kafka</td><td style="color:var(--muted); font-size:12px;">ObjectCreated event → Kafka topic video_uploads, partition = video_id % 256</td></tr>
+      <tr><td class="td-green">4</td><td>Worker picks up job</td><td>Transcoding Worker</td><td style="color:var(--muted); font-size:12px;">Дърпа job от Kafka. Проверява idempotency (вече транскодирано ли е?)</td></tr>
+      <tr><td class="td-green">5</td><td>Download + Transcode</td><td>FFmpeg</td><td style="color:var(--muted); font-size:12px;">6 резолюции паралелно. GOP-aligned сегменти по 4 секунди.</td></tr>
+      <tr><td class="td-green">6</td><td>Upload segments</td><td>Worker → S3</td><td style="color:var(--muted); font-size:12px;">~900 сегменти × 6 резолюции = ~5,400 файла. Cache-Control: max-age=∞</td></tr>
+      <tr><td class="td-green">7</td><td>Generate manifests</td><td>Worker</td><td style="color:var(--muted); font-size:12px;">Master manifest.m3u8 + per-resolution playlist.m3u8</td></tr>
+      <tr><td class="td-green">8</td><td>Update DB + Redis</td><td>Worker → DB</td><td style="color:var(--muted); font-size:12px;">status = 'ready'. Invalidate Redis cache за video_id.</td></tr>
+      <tr><td class="td-green">9</td><td>Invalidate CDN</td><td>Worker → CloudFront</td><td style="color:var(--muted); font-size:12px;">Purge /video_id/manifest.m3u8 — следващият request ще вземе новия</td></tr>
+      <tr><td class="td-green">10</td><td>Index in Elasticsearch</td><td>Background job</td><td style="color:var(--muted); font-size:12px;">Async — добавя title + description в search index</td></tr>
+    </table>
+  </div>
+
+  <!-- STREAM FLOW -->
+  <div style="margin-top:32px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">▶️ Пълен Stream Flow (стъпка по стъпка)</div>
+    <table>
+      <tr><th>#</th><th>Стъпка</th><th>Компонент</th><th>Детайл</th></tr>
+      <tr><td class="td-accent">1</td><td>GET /v1/videos/:id</td><td>Streaming Service</td><td style="color:var(--muted); font-size:12px;">Redis hit (1ms) или DB fallback (10ms). Връща metadata + CDN manifest URL.</td></tr>
+      <tr><td class="td-accent">2</td><td>Fetch master manifest</td><td>Client → CDN</td><td style="color:var(--muted); font-size:12px;">cdn.yt.com/vid_id/manifest.m3u8 — CDN hit &lt;50ms. Listing всички резолюции.</td></tr>
+      <tr><td class="td-accent">3</td><td>Measure bandwidth</td><td>HLS.js player</td><td style="color:var(--muted); font-size:12px;">Изтегля тест сегмент → изчислява bandwidth → избира подходяща резолюция</td></tr>
+      <tr><td class="td-accent">4</td><td>Fetch rendition playlist</td><td>Client → CDN</td><td style="color:var(--muted); font-size:12px;">cdn.yt.com/vid_id/720p/playlist.m3u8 — списък на всички сегменти</td></tr>
+      <tr><td class="td-accent">5</td><td>Download segments</td><td>Client → CDN</td><td style="color:var(--muted); font-size:12px;">720p/segment-000.ts, 001.ts... Буферира 15-30 секунди напред.</td></tr>
+      <tr><td class="td-accent">6</td><td>Adaptive switching</td><td>HLS.js</td><td style="color:var(--muted); font-size:12px;">Мрежата се влоши? Следващият сегмент е 480p вместо 720p. Безшумно.</td></tr>
+      <tr><td class="td-accent">7</td><td>POST /progress</td><td>Client → API</td><td style="color:var(--muted); font-size:12px;">Fire-and-forget всеки 30 секунди. DynamoDB за high write throughput.</td></tr>
+    </table>
+  </div>
+
+</div>
+</section>
+<hr class="divider">
+
+<hr class="divider">
+
+<!-- SECTION 14: RECOMMENDATION SYSTEM -->
+<section id="recommendations">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">14</span>
+    <h2 class="section-title">Recommendation System — Two-Stage Neural Network</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Защо е важна:</strong> Препоръчителната система отговаря за <strong>70%+ от общото watch time</strong> на YouTube. Без нея потребителите щяха да напуснат след първото видео. Това е една от най-сложните ML системи в света.
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🎯</div>Основният Проблем</div>
+      <p style="color:var(--muted); font-size:14px; line-height:1.7;">
+        От <strong style="color:var(--text)">800+ милиона видеа</strong>, изберете <strong style="color:var(--text)">точно тези 20</strong> които ще покажат на конкретен потребител в неговия home feed. И го направете за <strong style="color:var(--text)">&lt;100ms</strong>. За всеки от 2.5B потребителя. На всяко зареждане на страница.
+      </p>
+    </div>
+  </div>
+
+  <!-- TWO STAGE ARCHITECTURE -->
+  <div style="margin-top:24px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:16px;">🏗️ Two-Stage Architecture</div>
+
+    <div class="arch" style="line-height:1.8; padding:24px;">
+                ┌─────────────────────────────────────┐
+                │     800+ MILLION VIDEOS             │
+                │     (entire YouTube corpus)         │
+                └──────────────┬──────────────────────┘
+                               │
+                               ▼
+        ┌──────────────────────────────────────────────┐
+        │   STAGE 1: CANDIDATE GENERATION              │
+        │   ─────────────────────────────              │
+        │   Deep Neural Network                        │
+        │   Input:  user history, demographics, topics │
+        │   Output: ~500 candidate videos              │
+        │   Goal:   RECALL (find anything relevant)    │
+        │   Speed:  ~10ms                              │
+        └──────────────┬───────────────────────────────┘
+                       │  ~500 candidates
+                       ▼
+        ┌──────────────────────────────────────────────┐
+        │   STAGE 2: RANKING                           │
+        │   ─────────                                  │
+        │   Deeper Neural Network                      │
+        │   Input:  rich video + user features         │
+        │   Output: scored & sorted top 20             │
+        │   Goal:   PRECISION (best of the best)       │
+        │   Speed:  ~50ms (per candidate, parallel)    │
+        └──────────────┬───────────────────────────────┘
+                       │
+                       ▼
+                ┌──────────────────┐
+                │  TOP 20 VIDEOS    │
+                │  shown in feed    │
+                └───────────────────┘
+    </div>
+  </div>
+
+  <!-- STAGE 1 -->
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">1️⃣</div>Stage 1: Candidate Generation</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Не можем да оценим всичките 800M видеа за един потребител — твърде бавно. Затова първо отсяваме до ~500 кандидата.
+      </p>
+
+      <div style="font-size:13px; color:var(--accent); margin-bottom:8px; font-weight:600;">Inputs (User Embedding):</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+        <li><strong style="color:var(--text)">Watch history</strong> — embeddings на последните гледани видеа</li>
+        <li><strong style="color:var(--text)">Search history</strong> — embeddings на последните търсения</li>
+        <li><strong style="color:var(--text)">Demographics</strong> — възраст, пол, локация, език</li>
+        <li><strong style="color:var(--text)">Example age</strong> — кога потребителят е активен (за свежест)</li>
+        <li><strong style="color:var(--text)">Device & context</strong> — мобилен/десктоп, час от деня</li>
+      </ul>
+
+      <div style="font-size:13px; color:var(--accent); margin:14px 0 8px; font-weight:600;">Approach: Embedding Retrieval</div>
+      <p style="color:var(--muted); font-size:13px; line-height:1.7;">
+        Всеки потребител и всяко видео получават vector embedding в едно високо-измерно пространство. Близки vector-и = близки интереси. Използва се <strong style="color:var(--text)">approximate nearest neighbor search</strong> (HNSW/ScaNN) за бързо намиране на най-близките видеа.
+      </p>
+
+      <div style="margin-top:14px;">
+        <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Concept: Embedding retrieval за candidates</span>
+
+<span class="cmt">// 1. Convert user history → user embedding (vector)</span>
+<span class="kw">const</span> userEmbedding = userTower.forward({
+  watchHistory: lastWatched.map(v => v.embedding),
+  searchHistory: lastSearches,
+  demographics: { age, country, device }
+});
+<span class="cmt">// → [0.23, -0.51, 0.87, ..., 0.12]  (256-dim vector)</span>
+
+<span class="cmt">// 2. Find ~500 nearest video embeddings</span>
+<span class="cmt">// (precomputed offline для all 800M videos)</span>
+<span class="kw">const</span> candidates = <span class="kw">await</span> vectorDB.knn(
+  userEmbedding,
+  k=<span class="num">500</span>,
+  filters={ status: <span class="str">'public'</span>, language: user.lang }
+);
+
+<span class="cmt">// 3. Pass candidates to Stage 2 (Ranking)</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">2️⃣</div>Stage 2: Ranking</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Сега имаме ~500 кандидата. Трябва да изберем най-добрите 20. По-сложен модел с повече features.
+      </p>
+
+      <div style="font-size:13px; color:var(--accent); margin-bottom:8px; font-weight:600;">Predicted Targets:</div>
+      <table style="margin:0;">
+        <tr><th>Target</th><th>Why It Matters</th></tr>
+        <tr><td><strong>Expected watch time</strong></td><td style="font-size:12px; color:var(--muted);">Primary metric — YouTube maximizes total watch time</td></tr>
+        <tr><td><strong>Click-through rate (CTR)</strong></td><td style="font-size:12px; color:var(--muted);">Не само да кликне, но и да гледа дълго</td></tr>
+        <tr><td><strong>Satisfaction probability</strong></td><td style="font-size:12px; color:var(--muted);">Likes, не-dislike, не-skip</td></tr>
+        <tr><td><strong>Diversity score</strong></td><td style="font-size:12px; color:var(--muted);">Не показвай 20 видеа от един канал</td></tr>
+      </table>
+
+      <div style="font-size:13px; color:var(--accent); margin:14px 0 8px; font-weight:600;">Rich Features per (User, Video) pair:</div>
+      <ul style="color:var(--muted); font-size:13px; padding-left:16px; line-height:2;">
+        <li>Video features: title, description, channel, duration, upload age</li>
+        <li>User features: demographics, watch patterns, engagement history</li>
+        <li>Cross features: has user watched this channel before? Same language?</li>
+        <li>Context: time of day, day of week, device, network speed</li>
+        <li>Freshness: how new is this video (boost recently uploaded)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CHALLENGES -->
+  <div style="margin-top:24px">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">⚠️</div>Cold Start Problem</div>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:10px;"><strong style="color:var(--text)">Problem:</strong> Нов потребител — няма history.</p>
+        <p style="color:var(--muted); font-size:13px;"><strong style="color:var(--text)">Solution:</strong> Fall back към trending в неговата държава/език. Бързо ескалира в персонализация след първите 10 гледания.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="icon">🆕</div>Freshness Problem</div>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:10px;"><strong style="color:var(--text)">Problem:</strong> Ново видео — няма engagement данни.</p>
+        <p style="color:var(--muted); font-size:13px;"><strong style="color:var(--text)">Solution:</strong> "Example age" feature който boost-ва нови видеа. Без това моделът би препоръчвал само стари видеа с натрупани views.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFRA -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">⚙️</div>Infrastructure</div>
+      <table style="margin:0;">
+        <tr><th>Component</th><th>Tech</th><th>Note</th></tr>
+        <tr><td>ML Framework</td><td class="td-accent">TensorFlow</td><td style="font-size:12px; color:var(--muted);">YouTube was an early TF adopter</td></tr>
+        <tr><td>Training</td><td class="td-accent">Offline, distributed</td><td style="font-size:12px; color:var(--muted);">Trillions of examples, daily retraining</td></tr>
+        <tr><td>Serving</td><td class="td-accent">TF Serving + gRPC</td><td style="font-size:12px; color:var(--muted);">Optimized for low-latency inference</td></tr>
+        <tr><td>Vector Search</td><td class="td-accent">ScaNN (Google)</td><td style="font-size:12px; color:var(--muted);">Open-source library for fast ANN</td></tr>
+        <tr><td>A/B Testing</td><td class="td-accent">Live experiments</td><td style="font-size:12px; color:var(--muted);">Always running 100+ experiments in parallel</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 15: LIVE STREAMING -->
+<section id="livestreaming">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">15</span>
+    <h2 class="section-title">Live Streaming — RTMP Ingest, HLS Distribution</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Защо е различна от VOD:</strong> При обикновено видео имаме часове за транскодиране. При live стрийминг — секунди. Архитектурата е напълно различна: real-time encoding, push-based delivery, и съвсем различни latency targets.
+  </div>
+
+  <!-- ARCHITECTURE -->
+  <div style="margin-top:24px">
+    <div class="arch" style="line-height:1.8; padding:24px;">
+    CREATOR (OBS / Camera)
+            │
+            │  RTMP push (TCP, persistent connection)
+            │  Single bitrate, raw quality
+            ▼
+    ┌──────────────────────────────┐
+    │  RTMP INGESTION SERVERS      │
+    │  (geographically distributed) │
+    └──────────────┬────────────────┘
+                   │
+                   ▼
+    ┌──────────────────────────────┐
+    │  REAL-TIME TRANSCODER         │
+    │  (FPGA/GPU accelerated)       │
+    │  Generates 6 resolutions      │
+    │  in parallel, &lt;2 sec delay    │
+    └──────────────┬────────────────┘
+                   │
+       ┌───────────┼───────────────┐
+       ▼           ▼               ▼
+    ┌──────┐  ┌──────┐         ┌──────┐
+    │ 240p │  │ 720p │  ...    │ 4K   │
+    │ HLS  │  │ HLS  │         │ HLS  │
+    └──┬───┘  └──┬───┘         └──┬───┘
+       │         │                │
+       └─────────┴────────────────┘
+                 │
+                 ▼  (push to CDN)
+        ┌────────────────────┐
+        │  CDN EDGE NODES    │
+        │  Origin shield     │
+        │  Aggressive caching │
+        └────────┬───────────┘
+                 │
+                 ▼
+            MILLIONS OF VIEWERS
+    </div>
+  </div>
+
+  <!-- TWO PROTOCOLS -->
+  <div style="margin-top:24px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:16px;">📡 Two Protocols, Two Jobs</div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">📥</div>RTMP — Ingestion (Creator → YouTube)</div>
+        <table style="margin:0;">
+          <tr><td><strong>Protocol</strong></td><td>RTMP / RTMPS (encrypted)</td></tr>
+          <tr><td><strong>Transport</strong></td><td>TCP, persistent connection</td></tr>
+          <tr><td><strong>Latency</strong></td><td class="td-green">1–3 sec</td></tr>
+          <tr><td><strong>Encoders</strong></td><td>OBS, Wirecast, FFmpeg</td></tr>
+          <tr><td><strong>Bitrate</strong></td><td>Single, fixed by creator</td></tr>
+        </table>
+        <p style="color:var(--muted); font-size:12px; margin-top:14px; line-height:1.7;">
+          <strong style="color:var(--text)">Why RTMP?</strong> Изключително нисък latency, persistent connection (no HTTP overhead), reliable TCP delivery. Идеален за "first mile" — от encoder към server.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="icon">📤</div>HLS/DASH — Distribution (YouTube → Viewers)</div>
+        <table style="margin:0;">
+          <tr><td><strong>Protocol</strong></td><td>HLS / DASH</td></tr>
+          <tr><td><strong>Transport</strong></td><td>HTTP (cacheable)</td></tr>
+          <tr><td><strong>Latency</strong></td><td class="td-accent">15–45 sec (normal)</td></tr>
+          <tr><td><strong>Latency (LL-HLS)</strong></td><td class="td-green">2–5 sec</td></tr>
+          <tr><td><strong>Players</strong></td><td>Browser, mobile, smart TV</td></tr>
+        </table>
+        <p style="color:var(--muted); font-size:12px; margin-top:14px; line-height:1.7;">
+          <strong style="color:var(--text)">Why HLS?</strong> HTTP е cacheable от CDN — milliони зрители могат да гледат без да блъскат origin-а. Plus adaptive bitrate работи естествено.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LATENCY MODES -->
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">⏱️</div>YouTube Live Latency Modes</div>
+      <table style="margin:0;">
+        <tr>
+          <th>Mode</th>
+          <th>End-to-End Latency</th>
+          <th>Use Case</th>
+          <th>Trade-off</th>
+        </tr>
+        <tr>
+          <td class="td-accent">Normal</td>
+          <td>15–60 sec</td>
+          <td>Conferences, sports</td>
+          <td style="font-size:12px; color:var(--muted);">Best quality, more buffering</td>
+        </tr>
+        <tr>
+          <td class="td-accent">Low</td>
+          <td>5–15 sec</td>
+          <td>Webinars, gaming</td>
+          <td style="font-size:12px; color:var(--muted);">Balanced</td>
+        </tr>
+        <tr>
+          <td class="td-green">Ultra-low (LL-HLS)</td>
+          <td>2–5 sec</td>
+          <td>Q&amp;A, real-time chat</td>
+          <td style="font-size:12px; color:var(--muted);">Higher rebuffer risk</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- KEY DIFFERENCES -->
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🔄</div>VOD vs Live — Архитектурни различия</div>
+      <table style="margin:0;">
+        <tr>
+          <th>Aspect</th>
+          <th>VOD (regular video)</th>
+          <th>Live Stream</th>
+        </tr>
+        <tr>
+          <td>Transcoding</td>
+          <td class="td-accent">Async, 10-30 min</td>
+          <td class="td-green">Real-time, &lt;2 sec</td>
+        </tr>
+        <tr>
+          <td>Hardware</td>
+          <td class="td-accent">CPU/VCU farms</td>
+          <td class="td-green">GPU/FPGA pipelines</td>
+        </tr>
+        <tr>
+          <td>Segments</td>
+          <td class="td-accent">Pre-generated, static</td>
+          <td class="td-green">Generated on-the-fly</td>
+        </tr>
+        <tr>
+          <td>Storage</td>
+          <td class="td-accent">S3/Colossus (persistent)</td>
+          <td class="td-green">Sliding window (5 min)</td>
+        </tr>
+        <tr>
+          <td>Cache TTL</td>
+          <td class="td-accent">∞ (immutable)</td>
+          <td class="td-green">2-4 sec (changing)</td>
+        </tr>
+        <tr>
+          <td>Chat</td>
+          <td class="td-accent">Async comments</td>
+          <td class="td-green">Real-time WebSocket</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ARCHIVE TO VOD -->
+  <div style="margin-top:20px">
+    <div class="callout">
+      <strong>📦 Post-stream:</strong> След като live stream-ът свърши, цялото видео се архивира като обикновено VOD видео — minava през стандартния transcoding pipeline (VP9/AV1 за по-добра компресия) и става достъпно за on-demand гледане.
+    </div>
+  </div>
+
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 16: COMMENTS SYSTEM -->
+<section id="comments">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">16</span>
+    <h2 class="section-title">Comments System — Threaded at Scale</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Scale:</strong> YouTube има милиарди коментари. Популярно видео може да получи 100k+ коментари за час. Threaded структура (reply на reply). Spam filtering. Real-time updates. Това е самостоятелна сложна система.
+  </div>
+
+  <!-- DATA MODEL -->
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🗄️</div>Data Model</div>
+      <pre style="margin:0; font-size:11px;">
+<span class="cmt">-- Sharded by video_id (co-located with videos table)</span>
+<span class="kw">CREATE TABLE</span> comments (
+  comment_id    VARCHAR(20)  <span class="kw">PRIMARY KEY</span>,
+  video_id      VARCHAR(20)  <span class="kw">NOT NULL</span>,    <span class="cmt">-- Shard key</span>
+  parent_id     VARCHAR(20),                  <span class="cmt">-- NULL = top-level, else = reply</span>
+  user_id       VARCHAR(20)  <span class="kw">NOT NULL</span>,
+  content       TEXT         <span class="kw">NOT NULL</span>,
+  like_count    INT          <span class="kw">DEFAULT</span> <span class="num">0</span>,
+  reply_count   INT          <span class="kw">DEFAULT</span> <span class="num">0</span>,
+  created_at    TIMESTAMP    <span class="kw">DEFAULT</span> NOW(),
+  status        ENUM(<span class="str">'visible'</span>, <span class="str">'hidden'</span>, <span class="str">'spam'</span>, <span class="str">'deleted'</span>),
+  <span class="kw">INDEX</span> (video_id, created_at <span class="kw">DESC</span>),       <span class="cmt">-- Top-level comments by time</span>
+  <span class="kw">INDEX</span> (video_id, like_count <span class="kw">DESC</span>),        <span class="cmt">-- Top comments by likes</span>
+  <span class="kw">INDEX</span> (parent_id, created_at)              <span class="cmt">-- Replies in order</span>
+);</pre>
+    </div>
+  </div>
+
+  <!-- READ PATH -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">📖</div>Read Path — Зареждане на коментари</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">GET /v1/videos/:id/comments?sort=top&amp;cursor=abc</div>
+            <div class="step-desc">Default sort = "top" (by likes), alternatives = "new"</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Hit Redis cache първо</div>
+            <div class="step-desc">Top 20 comments на популярни видеа са cached. ~95% cache hit rate.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Cache miss → DB shard query</div>
+            <div class="step-desc">SELECT FROM comments WHERE video_id = ? AND parent_id IS NULL ORDER BY like_count DESC LIMIT 20</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Lazy load replies</div>
+            <div class="step-desc">Не зареждаме replies докато потребителят не клине "Show replies". Спестява огромно количество DB queries.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WRITE PATH -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">✍️</div>Write Path — Постване на коментар</div>
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">POST /v1/videos/:id/comments</div>
+            <div class="step-desc">User submits comment text</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Sync: Spam classifier (fast)</div>
+            <div class="step-desc">Lightweight ML model: ~5ms. Блокира obvious spam (links, abuse, etc.)</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Insert into DB (status='visible')</div>
+            <div class="step-desc">Comment appears immediately за поста</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Async: Deep spam check (slow)</div>
+            <div class="step-desc">По-сложен ML модел проверява в background. Ако е spam → status='hidden' (eventual consistency)</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-title">Invalidate Redis cache</div>
+            <div class="step-desc">Top comments cache за това видео се refresh-ва</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <div class="step-title">Notify video creator (push notification)</div>
+            <div class="step-desc">Async event → notification service</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHALLENGES -->
+  <div style="margin-top:20px">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">🔥</div>Hot Video Problem</div>
+        <p style="color:var(--muted); font-size:13px;">Viral видео получава 1000 коментара/секунда. Не можем да правим 1000 DB writes/sec на един shard. <strong style="color:var(--text)">Solution:</strong> Write buffer в Redis, batched flush към DB на всеки 1 sec.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="icon">🛡️</div>Spam &amp; Abuse</div>
+        <p style="color:var(--muted); font-size:13px;">Multi-layer защита: rate limiting per user, ML classifier (real-time), reputation score, community reports. Coordinated spam attacks се откриват чрез graph analysis.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 17: CONTENT ID -->
+<section id="contentid">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">17</span>
+    <h2 class="section-title">Content ID — Copyright Detection at Scale</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Защо е критична:</strong> Без Content ID, YouTube щеше да е залято с пиратско съдържание и щеше да бъде съдено в забвение. Системата сканира <strong>всеки upload</strong> срещу база от милиони copyright reference файлове за минути.
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🔍</div>Как работи Content ID</div>
+
+      <div style="font-family:'Syne',sans-serif; font-size:13px; color:var(--accent); margin-bottom:10px; font-weight:600;">Step 1: Rights Holders качват Reference Files</div>
+      <p style="color:var(--muted); font-size:13px; line-height:1.7; margin-bottom:14px;">
+        Музикални компании, филмови студия и TV мрежи качват техните оригинални работи. YouTube създава <strong style="color:var(--text)">digital fingerprints</strong> (audio + video hashes) и ги съхранява в reference database.
+      </p>
+
+      <div style="font-family:'Syne',sans-serif; font-size:13px; color:var(--accent); margin-bottom:10px; font-weight:600;">Step 2: New Upload се сканира</div>
+      <p style="color:var(--muted); font-size:13px; line-height:1.7; margin-bottom:14px;">
+        Когато някой качи видео, Content ID извлича audio и video fingerprints. Те се сравняват с reference database — <strong style="color:var(--text)">over 100 trillion comparisons per day</strong>.
+      </p>
+
+      <div style="font-family:'Syne',sans-serif; font-size:13px; color:var(--accent); margin-bottom:10px; font-weight:600;">Step 3: Match Action</div>
+      <table style="margin:0;">
+        <tr><th>Match Type</th><th>Action</th></tr>
+        <tr><td>Audio match (full song)</td><td class="td-accent">Monetize (revenue → rights holder)</td></tr>
+        <tr><td>Video match (full clip)</td><td class="td-red">Block worldwide</td></tr>
+        <tr><td>Partial match (5 sec clip)</td><td class="td-green">Track (no action, just stats)</td></tr>
+        <tr><td>No match</td><td class="td-green">Publish normally</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- FINGERPRINTING -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🎵</div>Audio Fingerprinting</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Audio се обработва на честотни spectrograms. Извличат се <strong style="color:var(--text)">landmark hashes</strong> — характерни точки във времево-честотното пространство. Тези hash-ове са устойчиви на: pitch shifting, tempo change, noise, compression.
+      </p>
+      <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Concept (Shazam-style fingerprinting)</span>
+
+<span class="kw">function</span> fingerprintAudio(audioBuffer) {
+  <span class="cmt">// 1. Compute spectrogram (FFT over time windows)</span>
+  <span class="kw">const</span> spectrogram = computeFFT(audioBuffer, {
+    windowSize: <span class="num">4096</span>,
+    hopSize: <span class="num">2048</span>
+  });
+
+  <span class="cmt">// 2. Find peak frequencies (landmarks)</span>
+  <span class="kw">const</span> peaks = findLocalMaxima(spectrogram);
+
+  <span class="cmt">// 3. Pair peaks → unique hash</span>
+  <span class="kw">const</span> hashes = [];
+  <span class="kw">for</span> (<span class="kw">const</span> [p1, p2] <span class="kw">of</span> pairAdjacentPeaks(peaks)) {
+    <span class="kw">const</span> hash = combineHash(
+      p1.freq, p2.freq, p2.time - p1.time
+    );
+    hashes.push({ hash, timestamp: p1.time });
+  }
+
+  <span class="kw">return</span> hashes;  <span class="cmt">// ~1000 hashes per minute of audio</span>
+}
+
+<span class="cmt">// Database has billions of these hashes indexed</span>
+<span class="cmt">// Matching is O(log N) per hash via inverted index</span></pre>
+    </div>
+  </div>
+
+  <!-- VIDEO FINGERPRINTING -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">🎬</div>Video Fingerprinting</div>
+      <p style="color:var(--muted); font-size:13px; line-height:1.7;">
+        Video fingerprinting е по-сложно. YouTube използва <strong style="color:var(--text)">perceptual hashing</strong> — извличат се ключови кадри (keyframes), всеки се конвертира в нискомерен hash който е устойчив на: resolution change, color change, watermarks, mirroring, slight cropping.
+      </p>
+      <p style="color:var(--muted); font-size:13px; line-height:1.7; margin-top:10px;">
+        Sequence-based matching: дори ако някой обърне кадрите или ги забави, последователността от hash-ове все още match-ва оригиналното видео.
+      </p>
+    </div>
+  </div>
+
+  <!-- POLICY ACTIONS -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">⚖️</div>Rights Holder Policies</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Rights holder-ите конфигурират policies. Различни actions за различни територии:
+      </p>
+      <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Example: Record label policy</span>
+{
+  <span class="key">"asset_id"</span>: <span class="str">"song_xyz"</span>,
+  <span class="key">"policies"</span>: [
+    {
+      <span class="key">"territory"</span>: <span class="str">"US"</span>,
+      <span class="key">"match_type"</span>: <span class="str">"full_audio"</span>,
+      <span class="key">"action"</span>: <span class="str">"monetize"</span>,
+      <span class="key">"revenue_split"</span>: <span class="num">0.55</span>  <span class="cmt">// 55% to rights holder</span>
+    },
+    {
+      <span class="key">"territory"</span>: <span class="str">"DE"</span>,        <span class="cmt">// Germany blocks UMG</span>
+      <span class="key">"match_type"</span>: <span class="str">"full_audio"</span>,
+      <span class="key">"action"</span>: <span class="str">"block"</span>
+    },
+    {
+      <span class="key">"territory"</span>: <span class="str">"*"</span>,         <span class="cmt">// Everywhere else</span>
+      <span class="key">"match_type"</span>: <span class="str">"partial_audio"</span>,
+      <span class="key">"action"</span>: <span class="str">"track"</span>      <span class="cmt">// Just collect stats</span>
+    }
+  ]
+}</pre>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<hr class="divider">
+
+<!-- SECTION 18: ANALYTICS -->
+<section id="analytics">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">18</span>
+    <h2 class="section-title">Analytics for Creators — Lambda Architecture</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Why it matters:</strong> Creator-ите се нуждаят от: <strong>real-time</strong> view counts (за trending), <strong>исторически</strong> analytics (retention, demographics), и <strong>revenue tracking</strong>. Това изисква две различни архитектури работещи паралелно.
+  </div>
+
+  <!-- LAMBDA ARCHITECTURE -->
+  <div style="margin-top:24px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:16px;">🧮 Lambda Architecture</div>
+
+    <div class="arch" style="line-height:1.8; padding:24px;">
+                EVENT SOURCES (player, ads, comments)
+                            │
+                            ▼
+                    ┌──────────────┐
+                    │ KAFKA / PUB/SUB │
+                    │ (event stream)  │
+                    └───────┬──────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+              ▼                           ▼
+    ┌────────────────────┐    ┌────────────────────┐
+    │   SPEED LAYER       │    │   BATCH LAYER      │
+    │   ───────────       │    │   ──────────       │
+    │   Apache Flink      │    │   Apache Beam      │
+    │                     │    │   (Cloud Dataflow)  │
+    │   Real-time:        │    │                     │
+    │   - view counts     │    │   Historical:       │
+    │   - trending now    │    │   - retention       │
+    │   - live chat       │    │   - demographics    │
+    │                     │    │   - revenue         │
+    │   Window: 5 min     │    │   Window: 1 day     │
+    │   Storage: Redis    │    │   Storage: BigQuery │
+    └─────────┬───────────┘    └─────────┬──────────┘
+              │                          │
+              └─────────────┬────────────┘
+                            ▼
+                ┌─────────────────────────┐
+                │  SERVING LAYER          │
+                │  (Creator Dashboard)    │
+                │                         │
+                │  Recent: Redis (5 min)   │
+                │  Historical: BigQuery   │
+                └─────────────────────────┘
+    </div>
+  </div>
+
+  <!-- SPEED VS BATCH -->
+  <div style="margin-top:24px">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">⚡</div>Speed Layer (Real-Time)</div>
+        <table style="margin:0;">
+          <tr><td><strong>Latency</strong></td><td class="td-green">&lt;1 second</td></tr>
+          <tr><td><strong>Tech</strong></td><td>Flink / Beam streaming</td></tr>
+          <tr><td><strong>Storage</strong></td><td>Redis (5-min TTL)</td></tr>
+          <tr><td><strong>Accuracy</strong></td><td class="td-accent">Approximate</td></tr>
+        </table>
+        <p style="color:var(--muted); font-size:13px; margin-top:14px; line-height:1.7;">
+          <strong style="color:var(--text)">Use cases:</strong> Trending now, live view counter, real-time чат, live alerts ("Your video is going viral!").
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div class="icon">📊</div>Batch Layer (Historical)</div>
+        <table style="margin:0;">
+          <tr><td><strong>Latency</strong></td><td class="td-accent">Hours to 24h</td></tr>
+          <tr><td><strong>Tech</strong></td><td>Beam (Dataflow), Spark</td></tr>
+          <tr><td><strong>Storage</strong></td><td>BigQuery / data warehouse</td></tr>
+          <tr><td><strong>Accuracy</strong></td><td class="td-green">Exact</td></tr>
+        </table>
+        <p style="color:var(--muted); font-size:13px; margin-top:14px; line-height:1.7;">
+          <strong style="color:var(--text)">Use cases:</strong> Retention curves, demographics, revenue reports, A/B test results, year-end summaries.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVENT STRUCTURE -->
+  <div style="margin-top:24px">
+    <div class="card">
+      <div class="card-title"><div class="icon">📨</div>Event Structure</div>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+        Всяко взаимодействие генерира event. Player изпраща ~10 event/min на потребител. С 122M DAU = милиарди events на ден.
+      </p>
+      <pre style="margin:0; font-size:11px;">
+<span class="cmt">// Example: Watch event</span>
+{
+  <span class="key">"event_type"</span>: <span class="str">"watch_progress"</span>,
+  <span class="key">"event_id"</span>: <span class="str">"evt_8x2Kp...n"</span>,    <span class="cmt">// idempotency key</span>
+  <span class="key">"user_id"</span>: <span class="str">"usr_abc123"</span>,         <span class="cmt">// hashed for privacy</span>
+  <span class="key">"video_id"</span>: <span class="str">"vid_8xKp2mNqRs"</span>,
+  <span class="key">"timestamp"</span>: <span class="num">1735200000000</span>,
+  <span class="key">"data"</span>: {
+    <span class="key">"position_sec"</span>: <span class="num">127</span>,
+    <span class="key">"watch_duration_sec"</span>: <span class="num">30</span>,
+    <span class="key">"quality"</span>: <span class="str">"1080p"</span>,
+    <span class="key">"buffering_count"</span>: <span class="num">0</span>,
+    <span class="key">"playback_speed"</span>: <span class="num">1.0</span>,
+    <span class="key">"is_autoplay"</span>: <span class="kw">false</span>
+  },
+  <span class="key">"context"</span>: {
+    <span class="key">"device"</span>: <span class="str">"mobile_ios"</span>,
+    <span class="key">"country"</span>: <span class="str">"BG"</span>,
+    <span class="key">"network"</span>: <span class="str">"4g"</span>,
+    <span class="key">"referrer"</span>: <span class="str">"home_feed"</span>      <span class="cmt">// where they came from</span>
+  }
+}</pre>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div style="margin-top:20px">
+    <div class="card">
+      <div class="card-title"><div class="icon">📈</div>Ключови метрики за creators</div>
+      <table style="margin:0;">
+        <tr><th>Metric</th><th>How Computed</th><th>Layer</th></tr>
+        <tr><td>Views</td><td style="font-size:12px;">Unique user_id × video_id × hour</td><td class="td-green">Both</td></tr>
+        <tr><td>Watch time</td><td style="font-size:12px;">Sum of all watch_duration events</td><td class="td-green">Both</td></tr>
+        <tr><td>Retention curve</td><td style="font-size:12px;">% of viewers at each second mark</td><td class="td-accent">Batch only</td></tr>
+        <tr><td>Click-through rate</td><td style="font-size:12px;">views / impressions</td><td class="td-accent">Batch</td></tr>
+        <tr><td>Demographics</td><td style="font-size:12px;">Aggregate by age/gender/country</td><td class="td-accent">Batch</td></tr>
+        <tr><td>Revenue</td><td style="font-size:12px;">Ad impressions × CPM × revenue share</td><td class="td-accent">Batch</td></tr>
+        <tr><td>Trending</td><td style="font-size:12px;">Velocity of views in last 24h</td><td class="td-green">Speed</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+</section>
+<!-- SECTION 14: REAL YOUTUBE vs GENERIC DESIGN -->
+<section id="realvsguide">
+<div class="container">
+  <div class="section-header">
+    <span class="section-num">19</span>
+    <h2 class="section-title">Generic Design vs Real YouTube Stack</h2>
+  </div>
+
+  <div class="callout">
+    <strong>Защо тази секция е важна:</strong> Цялото guide дотук показа архитектура с генерични AWS компоненти (S3, Kafka, PostgreSQL). Това е стандартният начин на отговаряне в interview. Но реалният YouTube ползва Google вътрешни системи. Тази секция изяснява разликите.
+  </div>
+
+  <!-- COMPARISON TABLE -->
+  <div style="margin-top:32px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">📊 Side-by-Side Comparison</div>
+    <table>
+      <tr>
+        <th>Component</th>
+        <th>This Guide (Generic)</th>
+        <th>Real YouTube</th>
+        <th>Why Different</th>
+      </tr>
+      <tr>
+        <td><strong>Object Storage</strong></td>
+        <td class="td-accent">AWS S3</td>
+        <td class="td-green">Colossus</td>
+        <td style="font-size:12px; color:var(--muted)">S3 egress costs $0.085/GB. YouTube saves $100M+/yr with custom storage.</td>
+      </tr>
+      <tr>
+        <td><strong>Database</strong></td>
+        <td class="td-accent">MySQL + Vitess</td>
+        <td class="td-green">Spanner + Bigtable</td>
+        <td style="font-size:12px; color:var(--muted)">Vitess started inside YouTube and is still used. Spanner for global consistency.</td>
+      </tr>
+      <tr>
+        <td><strong>Message Queue</strong></td>
+        <td class="td-accent">Apache Kafka</td>
+        <td class="td-green">Google Pub/Sub</td>
+        <td style="font-size:12px; color:var(--muted)">Pub/Sub is fully managed by Google, integrates with their stack.</td>
+      </tr>
+      <tr>
+        <td><strong>Transcoding</strong></td>
+        <td class="td-accent">FFmpeg on EC2</td>
+        <td class="td-green">Custom VCU hardware</td>
+        <td style="font-size:12px; color:var(--muted)">Video Coding Units (custom ASICs) — 30x faster than CPU transcoding.</td>
+      </tr>
+      <tr>
+        <td><strong>Video Codec</strong></td>
+        <td class="td-accent">H.264</td>
+        <td class="td-green">VP9 + AV1</td>
+        <td style="font-size:12px; color:var(--muted)">VP9 is royalty-free (Google created it). AV1 cuts bandwidth 30% more.</td>
+      </tr>
+      <tr>
+        <td><strong>CDN</strong></td>
+        <td class="td-accent">CloudFront</td>
+        <td class="td-green">Google Global Cache</td>
+        <td style="font-size:12px; color:var(--muted)">GGC nodes inside ISPs — closer to users than any commercial CDN.</td>
+      </tr>
+      <tr>
+        <td><strong>Cache Layer</strong></td>
+        <td class="td-accent">Redis</td>
+        <td class="td-green">Memcached + custom</td>
+        <td style="font-size:12px; color:var(--muted)">YouTube was an early Memcached user. Still uses it heavily.</td>
+      </tr>
+      <tr>
+        <td><strong>Search</strong></td>
+        <td class="td-accent">Elasticsearch</td>
+        <td class="td-green">Custom (based on Google search infra)</td>
+        <td style="font-size:12px; color:var(--muted)">YouTube ranking is part of Google's broader search system.</td>
+      </tr>
+      <tr>
+        <td><strong>Compute</strong></td>
+        <td class="td-accent">EC2 + ECS</td>
+        <td class="td-green">Borg → Kubernetes</td>
+        <td style="font-size:12px; color:var(--muted)">Borg was Google's internal predecessor to Kubernetes.</td>
+      </tr>
+      <tr>
+        <td><strong>Languages</strong></td>
+        <td class="td-accent">Node.js / Java</td>
+        <td class="td-green">Python + C++ + Java + Go</td>
+        <td style="font-size:12px; color:var(--muted)">Python for backend logic, C++ for transcoding, Go for new services.</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- WHY GENERIC -->
+  <div style="margin-top:32px">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><div class="icon">🎓</div>Защо учим Generic stack</div>
+        <ul style="color:var(--muted); font-size:13px; line-height:2.2; padding-left:16px;">
+          <li>В interview очакват AWS/общи технологии</li>
+          <li>Концепциите са универсални (sharding, caching, CDN)</li>
+          <li>Можеш да го имплементираш с публични облачни услуги</li>
+          <li>Real Google internals не са публични</li>
+          <li>Generic stack е по-преносим към други компании</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="icon">🏢</div>Защо YouTube ползва custom</div>
+        <ul style="color:var(--muted); font-size:13px; line-height:2.2; padding-left:16px;">
+          <li>S3 egress е $0.085/GB — твърде скъпо при exabyte</li>
+          <li>Custom hardware дава 30x по-бързо транскодиране</li>
+          <li>Google вече имаше инфраструктура (Borg, Colossus)</li>
+          <li>Vendor independence — не зависят от AWS</li>
+          <li>Оптимизации за specific workload (video) не съществуват в S3</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEY FACTS VERIFICATION -->
+  <div style="margin-top:32px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">✅ Verified YouTube Facts</div>
+    <table>
+      <tr>
+        <th>Fact</th>
+        <th>Status</th>
+        <th>Source</th>
+      </tr>
+      <tr>
+        <td>2.53 billion monthly active users (2025)</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">DataReportal, Statista</td>
+      </tr>
+      <tr>
+        <td>500+ hours uploaded per minute</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">YouTube official + multiple sources</td>
+      </tr>
+      <tr>
+        <td>256GB max file size, 12h max duration</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">support.google.com/youtube</td>
+      </tr>
+      <tr>
+        <td>~122 million daily active users</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">Industry analytics 2025</td>
+      </tr>
+      <tr>
+        <td>20 million videos uploaded daily</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">Data Reportal 2025</td>
+      </tr>
+      <tr>
+        <td>YouTube uses Vitess (MySQL sharding)</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">Open-sourced by YouTube, vitess.io</td>
+      </tr>
+      <tr>
+        <td>VP9 + AV1 codecs in production</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">Google engineering blog</td>
+      </tr>
+      <tr>
+        <td>3,000+ CDN edge locations</td>
+        <td class="td-green">✅ Verified</td>
+        <td style="font-size:12px; color:var(--muted)">Google Global Cache program</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- DESIGN ASSUMPTIONS -->
+  <div style="margin-top:32px">
+    <div style="font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px;">⚠️ Design Assumptions (not real YouTube numbers)</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">
+      Тези числа в guide-а са <strong style="color:var(--text)">design assumptions за educational purposes</strong>, не реални YouTube метрики:
+    </p>
+    <table>
+      <tr>
+        <th>Assumption</th>
+        <th>Used For</th>
+        <th>Real Number</th>
+      </tr>
+      <tr>
+        <td>100M DAU</td>
+        <td style="font-size:12px; color:var(--muted)">Simpler math for capacity planning</td>
+        <td class="td-accent">~122M DAU</td>
+      </tr>
+      <tr>
+        <td>1M uploads/day</td>
+        <td style="font-size:12px; color:var(--muted)">Cleaner round number</td>
+        <td class="td-accent">~20M videos/day</td>
+      </tr>
+      <tr>
+        <td>100:1 read:write ratio</td>
+        <td style="font-size:12px; color:var(--muted)">Educational rule of thumb</td>
+        <td class="td-accent">Not publicly disclosed</td>
+      </tr>
+      <tr>
+        <td>256 database shards</td>
+        <td style="font-size:12px; color:var(--muted)">Powers-of-2 design choice</td>
+        <td class="td-accent">Actual shard count not public</td>
+      </tr>
+      <tr>
+        <td>5,000 transcoding workers</td>
+        <td style="font-size:12px; color:var(--muted)">Reasonable estimate</td>
+        <td class="td-accent">YouTube uses custom VCU hardware instead</td>
+      </tr>
+      <tr>
+        <td>$420M annual infrastructure cost</td>
+        <td style="font-size:12px; color:var(--muted)">Order-of-magnitude estimate</td>
+        <td class="td-accent">Real costs not public; estimates vary widely</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- INTERVIEW TAKEAWAY -->
+  <div style="margin-top:32px">
+    <div class="card" style="border-left:3px solid var(--accent);">
+      <div class="card-title"><div class="icon">💡</div>Interview Takeaway</div>
+      <p style="color:var(--muted); font-size:14px; line-height:1.7;">
+        <strong style="color:var(--text);">В интервю никой не очаква да знаеш точно какво ползва YouTube вътрешно</strong> — те искат да видят че можеш да дизайнаш система от нулата със стандартни компоненти.
+      </p>
+      <p style="color:var(--muted); font-size:14px; line-height:1.7; margin-top:12px;">
+        Но ако споменеш че знаеш разликата между generic stack и Google internal tools — това впечатлява interviewer-а. Можеш да кажеш:
+      </p>
+      <pre style="margin-top:12px; font-size:12px;">
+<span class="cmt">// Какво да кажеш в интервю</span>
+
+<span class="str">"Бих използвал Kafka за message queue, защото е стандартен 
+и добре документиран. Реалният YouTube ползва Google Pub/Sub, 
+но концепцията е същата — async processing с ordering guarantees."</span>
+
+<span class="str">"За storage бих избрал S3 — durable, скалируем, добре известен. 
+YouTube построиха Colossus, защото S3 egress costs ($0.085/GB) са 
+прохибитивно скъпи при exabyte мащаб. Но за обичайно приложение, 
+S3 е правилният избор."</span>
+
+<span class="str">"За database — MySQL + Vitess. Това всъщност е реалното YouTube 
+решение, защото го построиха инхаус и го open-source-наха. 
+Спестява много операционна сложност."</span>
+      </pre>
+    </div>
+  </div>
+
+</div>
+</section>
+<footer>
+  <p>YouTube System Design — Complete Study Guide</p>
+  <p style="margin-top:8px">Sources: The System Design Newsletter (Neo Kim) · ByteByteGo · GrokkingSystemDesign · VDOCipher</p>
+</footer>
+
+</body>
+</html>
